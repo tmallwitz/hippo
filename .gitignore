@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.python-version
+
+# uv
+.uv/
+uv.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Hippo-specific: NEVER commit vault content
+# Vaults contain personal information about users, relationships,
+# and conversations. They must not land in the repository.
+vaults/
+*-vault/
+test-vault/
+hippo-vaults/
+
+# Never commit runtime memory state
+dream_reports/
+short_term/
+inbox/
+
+# Logs
+logs/
+*.log
+
+# Claude Agent SDK local state
+.claude/sessions/
+.claude/cache/
+
+# Agent OS: agent-os/ is committed (standards, specs, product docs).
+# Only runtime artifacts are excluded.
+agent-os/**/.cache/
