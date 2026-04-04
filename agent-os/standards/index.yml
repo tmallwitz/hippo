@@ -1,0 +1,16 @@
+# Agent OS Standards Index
+
+global:
+  coding-style:
+    description: Needs description - run /index-standards
+  commenting:
+    description: Needs description - run /index-standards
+  conventions:
+    description: Needs description - run /index-standards
+  error-handling:
+    description: Needs description - run /index-standards
+  tech-stack:
+    description: Needs description - run /index-standards
+  validation:
+    description: Needs description - run /index-standards
+
