@@ -55,7 +55,7 @@ def _to_aiogram_entities(tg_entities: list[object]) -> list[MessageEntity]:
     """Convert telegramify-markdown entities to aiogram MessageEntity objects."""
     result: list[MessageEntity] = []
     for e in tg_entities:
-        d = e.to_dict()  # type: ignore[union-attr]
+        d = e.to_dict()  # type: ignore[attr-defined]
         result.append(MessageEntity(**d))
     return result
 

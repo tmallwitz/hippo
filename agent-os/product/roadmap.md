@@ -67,6 +67,58 @@ to "what is true".
 
 ---
 
+## Phase 2b: Scheduler
+
+**Status:** Planned
+
+Give the bot the ability to perform actions at scheduled times. This
+turns Hippo from a reactive assistant into a proactive one that can
+remind, check in, and act autonomously on a schedule.
+
+### Scope
+
+- New tool: `schedule_task(description, cron_or_time, channel?)` — the
+  user tells the bot "remind me every Monday at 9 to check the deploy"
+  or "in 3 hours, ask me how the meeting went"
+- Scheduled tasks stored as YAML/Markdown in `scheduled/` in the vault
+  (human-readable, editable in Obsidian)
+- A scheduler loop that checks for due tasks and executes them by
+  querying the agent with the task description as a prompt
+- Results sent back to the user via Telegram
+- New tool: `list_scheduled_tasks()` — show what's upcoming
+- New tool: `cancel_scheduled_task(id)` — remove a scheduled task
+- Recurring tasks (cron-style) and one-shot tasks (specific datetime)
+- Timezone-aware (configured per bot in `.env`)
+
+### Use Cases
+
+- **Reminders:** "Remind me tomorrow at 10 to call the dentist"
+- **Recurring check-ins:** "Every Friday at 17:00, ask me what I
+  accomplished this week" (response gets logged as an episode)
+- **Proactive memory:** "Every morning at 8, tell me what's on my
+  mind" (agent searches recent episodic + semantic memory and sends
+  a summary)
+- **Delayed follow-ups:** "In 2 hours, ask me how the presentation went"
+
+### Integration with Other Layers
+
+- Scheduler can trigger episodic logging (Phase 2a) — a recurring
+  "journal prompt" becomes a natural way to fill the episodic memory
+- In Phase 3, scheduled tasks feed into the short-term buffer and
+  get consolidated by the dream cycle
+- The dream cycle itself (Phase 3) is just a special scheduled task
+
+### Acceptance Criteria
+
+- User says "remind me in 1 hour to drink water" → bot sends the
+  reminder at the right time
+- User sets a recurring task → it fires reliably on schedule
+- `list_scheduled_tasks` shows all upcoming tasks
+- Scheduled tasks survive bot restarts (persisted in vault)
+- Tasks are visible and editable as files in Obsidian
+
+---
+
 ## Phase 3: Short-Term Buffer + Dream Cycle + Inter-Bot Mailbox
 
 **Status:** Planned
