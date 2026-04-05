@@ -9,12 +9,14 @@ from typing import Any
 from claude_agent_sdk import create_sdk_mcp_server, tool
 
 from hippo.memory.episodic import ObsidianEpisodicStore
+from hippo.memory.scheduled import ObsidianScheduledStore
 from hippo.memory.semantic import ObsidianSemanticStore
 from hippo.memory.types import Entity, Relation
 
 # Module-level stores, set by create_memory_server()
 _store: ObsidianSemanticStore | None = None
 _episodic_store: ObsidianEpisodicStore | None = None
+_scheduled_store: ObsidianScheduledStore | None = None
 
 
 def _get_store() -> ObsidianSemanticStore:
@@ -29,6 +31,13 @@ def _get_episodic_store() -> ObsidianEpisodicStore:
         msg = "Episodic store not initialized — call create_memory_server() first"
         raise RuntimeError(msg)
     return _episodic_store
+
+
+def _get_scheduled_store() -> ObsidianScheduledStore:
+    if _scheduled_store is None:
+        msg = "Scheduled store not initialized — call create_memory_server() first"
+        raise RuntimeError(msg)
+    return _scheduled_store
 
 
 def _text(content: str) -> dict[str, Any]:
@@ -238,6 +247,69 @@ async def recall_episodes(args: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Scheduler tools
+# ---------------------------------------------------------------------------
+
+
+@tool(
+    "schedule_task",
+    "Schedule a task. Provide 'time' (ISO datetime) for one-shot or 'cron' for recurring.",
+    {
+        "description": str,
+        "time": str,
+        "cron": str,
+    },
+)
+async def schedule_task(args: dict[str, Any]) -> dict[str, Any]:
+    task = await _get_scheduled_store().create_task(
+        description=args["description"],
+        time=args.get("time") or None,
+        cron_expr=args.get("cron") or None,
+    )
+    kind = "recurring" if task.recurring else "one-shot"
+    return _text(f"Scheduled {kind} task {task.id}: {task.description}")
+
+
+@tool(
+    "list_scheduled_tasks",
+    "List all pending and active scheduled tasks.",
+    {},
+)
+async def list_scheduled_tasks(args: dict[str, Any]) -> dict[str, Any]:
+    tasks = await _get_scheduled_store().list_tasks()
+    if not tasks:
+        return _text("No scheduled tasks.")
+    data = [
+        {
+            "id": t.id,
+            "description": t.description,
+            "time": t.time,
+            "recurring": t.recurring,
+            "cron": t.cron,
+            "status": t.status,
+            "created": t.created,
+            "lastRun": t.last_run,
+        }
+        for t in tasks
+    ]
+    return _json_result(data)
+
+
+@tool(
+    "cancel_scheduled_task",
+    "Cancel and remove a scheduled task by its ID.",
+    {
+        "task_id": str,
+    },
+)
+async def cancel_scheduled_task(args: dict[str, Any]) -> dict[str, Any]:
+    found = await _get_scheduled_store().cancel_task(args["task_id"])
+    if found:
+        return _text(f"Task {args['task_id']} cancelled.")
+    return _text(f"Task {args['task_id']} not found.")
+
+
+# ---------------------------------------------------------------------------
 # Serialisation helper
 # ---------------------------------------------------------------------------
 
@@ -268,15 +340,18 @@ def _graph_to_dict(graph: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def create_memory_server(vault_path: Path) -> Any:
-    """Create and return the MCP server with all memory tools wired up."""
-    global _store, _episodic_store
+def create_memory_server(
+    vault_path: Path, timezone: str = "UTC"
+) -> tuple[Any, ObsidianScheduledStore]:
+    """Create the MCP server and return it with the scheduled store."""
+    global _store, _episodic_store, _scheduled_store
     _store = ObsidianSemanticStore(vault_path)
     _episodic_store = ObsidianEpisodicStore(vault_path)
+    _scheduled_store = ObsidianScheduledStore(vault_path, timezone)
 
-    return create_sdk_mcp_server(
+    server = create_sdk_mcp_server(
         name="hippo-memory",
-        version="0.2.0",
+        version="0.3.0",
         tools=[
             create_entities,
             create_relations,
@@ -289,5 +364,9 @@ def create_memory_server(vault_path: Path) -> Any:
             open_nodes,
             log_episode,
             recall_episodes,
+            schedule_task,
+            list_scheduled_tasks,
+            cancel_scheduled_task,
         ],
     )
+    return server, _scheduled_store

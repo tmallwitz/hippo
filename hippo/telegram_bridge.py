@@ -47,7 +47,7 @@ class _WhitelistFilter(BaseFilter):
 
 
 # ---------------------------------------------------------------------------
-# Markdown → Telegram conversion
+# Markdown → Telegram conversion (public — also used by scheduler)
 # ---------------------------------------------------------------------------
 
 
@@ -60,7 +60,7 @@ def _to_aiogram_entities(tg_entities: list[object]) -> list[MessageEntity]:
     return result
 
 
-def _convert_to_telegram(markdown_text: str) -> list[dict[str, object]]:
+def convert_to_telegram(markdown_text: str) -> list[dict[str, object]]:
     """Convert Claude's Markdown into Telegram-ready (text, entities) chunks.
 
     Returns a list of dicts with 'text' and 'entities' keys, each fitting
@@ -127,11 +127,11 @@ async def _keep_typing(bot: Bot, chat_id: int, stop: asyncio.Event) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Agent query
+# Agent query (public — also used by scheduler)
 # ---------------------------------------------------------------------------
 
 
-async def _query_agent(client: ClaudeSDKClient, text: str) -> str:
+async def query_agent(client: ClaudeSDKClient, text: str) -> str:
     """Send a message to the agent and collect the text response."""
     await client.query(text)
     parts: list[str] = []
@@ -152,9 +152,13 @@ async def _query_agent(client: ClaudeSDKClient, text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def run_bot(config: HippoConfig, client: ClaudeSDKClient) -> None:
+async def run_bot(
+    config: HippoConfig,
+    client: ClaudeSDKClient,
+    bot: Bot,
+    client_lock: asyncio.Lock,
+) -> None:
     """Start the Telegram bot and poll for messages."""
-    bot = Bot(token=config.telegram_bot_token)
     dp = Dispatcher()
 
     allowed_ids = set(config.allowed_telegram_ids)
@@ -170,19 +174,19 @@ async def run_bot(config: HippoConfig, client: ClaudeSDKClient) -> None:
         typing_task = asyncio.create_task(_keep_typing(bot, chat_id, stop_typing))
 
         try:
-            response = await _query_agent(client, message.text)
+            async with client_lock:
+                response = await query_agent(client, message.text)
         finally:
             stop_typing.set()
             await typing_task
 
-        for part in _convert_to_telegram(response):
+        for part in convert_to_telegram(response):
             try:
                 await message.answer(
                     text=part["text"],  # type: ignore[arg-type]
                     entities=part["entities"],  # type: ignore[arg-type]
                 )
             except Exception:
-                # Last resort: plain text, no formatting
                 await message.answer(str(part["text"]))
 
     log.info("Starting Telegram bot polling (allowed IDs: %s)", allowed_ids)
