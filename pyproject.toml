@@ -1,0 +1,51 @@
+[project]
+name = "hippo"
+version = "0.1.0"
+description = "Claude agent with multi-layered memory, Obsidian vault as brain, Telegram as mouth"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "claude-agent-sdk>=0.1.0",
+    "aiogram>=3.0",
+    "python-frontmatter>=1.0",
+    "pydantic-settings>=2.0",
+    "python-dotenv>=1.0",
+    "telegramify-markdown>=1.1.1",
+]
+
+[project.scripts]
+hippo = "hippo.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "ruff>=0.9",
+    "mypy>=1.13",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["frontmatter", "claude_agent_sdk", "telegramify_markdown", "telegramify_markdown.config"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

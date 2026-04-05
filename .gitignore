@@ -12,15 +12,14 @@ build/
 .mypy_cache/
 .ruff_cache/
 
-# Virtual environments
-.venv/
+# Virtual environments.venv/
 venv/
 env/
 .python-version
 
 # uv
 .uv/
-uv.lock
+# uv.lock is intentionally NOT ignored — commit it for reproducible builds
 
 # Environment variables
 .env
@@ -63,3 +62,5 @@ logs/
 # Agent OS: agent-os/ is committed (standards, specs, product docs).
 # Only runtime artifacts are excluded.
 agent-os/**/.cache/
+
+.claude/settings.local.jso
