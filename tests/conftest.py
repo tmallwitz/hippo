@@ -17,4 +17,8 @@ def tmp_vault(tmp_path: Path) -> Path:
     (tmp_path / "semantic").mkdir()
     (tmp_path / "episodic").mkdir()
     (tmp_path / "scheduled").mkdir()
+    (tmp_path / "short_term").mkdir()
+    (tmp_path / "short_term" / "processed").mkdir()
+    (tmp_path / "inbox").mkdir()
+    (tmp_path / "dream_reports").mkdir()
     return tmp_path

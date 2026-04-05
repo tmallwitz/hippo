@@ -19,7 +19,9 @@ class HippoConfig(BaseSettings):
     hippo_vault_path: Path
     hippo_bot_name: str = "alice"
     hippo_model: str = "claude-sonnet-4-5"
+    hippo_dream_model: str = "claude-sonnet-4-5"
     hippo_timezone: str = "Europe/Berlin"
+    hippo_buffer_max_entries: int = 50
 
     @field_validator("allowed_telegram_ids", mode="before")
     @classmethod

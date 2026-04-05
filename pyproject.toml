@@ -13,6 +13,7 @@ dependencies = [
     "telegramify-markdown>=1.1.1",
     "croniter>=1.3",
     "tzdata>=2026.1",
+    "pyyaml>=6.0",
 ]
 
 [project.scripts]
@@ -41,7 +42,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["frontmatter", "claude_agent_sdk", "telegramify_markdown", "telegramify_markdown.config", "croniter"]
+module = ["frontmatter", "claude_agent_sdk", "telegramify_markdown", "telegramify_markdown.config", "croniter", "yaml"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -1,0 +1,16 @@
+# Bot registry for inter-bot mailbox (Hippo Phase 3)
+#
+# Each entry maps a bot name to its vault path.
+# Paths support ~ expansion.
+#
+# Example — replace with your actual bot names and vault paths:
+bots:
+  alice:
+    vault: ~/hippo-vaults/alice
+    role: "personal daily driver"
+  bob:
+    vault: ~/hippo-vaults/bob
+    role: "work assistant"
+  carol:
+    vault: ~/hippo-vaults/carol
+    role: "research companion"

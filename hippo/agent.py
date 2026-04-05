@@ -10,6 +10,8 @@ from hippo.memory.server import create_memory_server
 
 if TYPE_CHECKING:
     from hippo.config import HippoConfig
+    from hippo.memory.buffer import ObsidianBufferStore
+    from hippo.memory.mailbox import ObsidianMailboxStore
     from hippo.memory.scheduled import ObsidianScheduledStore
 
 SYSTEM_PROMPT = """\
@@ -110,19 +112,47 @@ time, use the scheduling tools:
   to the user. Example: "Ask the user how their presentation went and
   log the response as an episode."
 - Confirm scheduled tasks briefly: "Got it, I'll remind you tomorrow at 10."
+
+## Short-term buffer
+
+You have a lightweight note-taking tool for raw impressions:
+
+- **remember** — Call this for **everything** from the conversation. Every
+  fact, preference, opinion, plan, question, decision, or piece of context
+  the user mentions — note it down. No filtering, no decisions, no structure.
+  The dream cycle decides what's worth keeping. Your job is just to capture.
+  - Call it even when you're also using `create_entities` or `log_episode`
+    for the same information. Redundancy is intentional.
+  - Don't announce that you're using it.
+
+## Inter-bot mailbox
+
+You can send messages to other bots and read your own inbox:
+
+- **send_message** — Send a message to another bot by name. The message
+  will be processed during that bot's next dream cycle. Use for coordinating
+  context between bots that serve the same user.
+- **read_inbox** — Check messages other bots have sent you. You can read
+  your inbox anytime; formal consolidation happens during the dream cycle.
 """
 
 
 async def create_agent(
     config: HippoConfig,
-) -> tuple[ClaudeSDKClient, ObsidianScheduledStore]:
+) -> tuple[ClaudeSDKClient, ObsidianScheduledStore, ObsidianBufferStore, ObsidianMailboxStore]:
     """Create a Claude Agent SDK client wired to the memory MCP server.
 
-    Returns (client, scheduled_store) tuple.
+    Returns (client, scheduled_store, buffer_store, mailbox_store) tuple.
     """
-    memory_server, scheduled_store = create_memory_server(
-        config.hippo_vault_path, config.hippo_timezone
+    memory_server, scheduled_store, buffer_store = create_memory_server(
+        config.hippo_vault_path,
+        config.hippo_timezone,
+        config.hippo_bot_name,
     )
+
+    from hippo.memory.mailbox import ObsidianMailboxStore as _MailboxStore
+
+    mailbox_store = _MailboxStore(config.hippo_vault_path, config.hippo_bot_name)
 
     prompt = SYSTEM_PROMPT.replace("{timezone}", config.hippo_timezone)
 
@@ -133,4 +163,4 @@ async def create_agent(
         model=config.hippo_model,
         cwd=str(config.hippo_vault_path),
     )
-    return ClaudeSDKClient(options=options), scheduled_store
+    return ClaudeSDKClient(options=options), scheduled_store, buffer_store, mailbox_store

@@ -71,3 +71,22 @@ class TestConfigParsing:
             **_NO_ENV,
         )
         assert config.hippo_model == "claude-opus-4-1-20250805"
+
+    def test_dream_model_default(self, tmp_path: Path) -> None:
+        config = HippoConfig(
+            telegram_bot_token="123:ABC",
+            allowed_telegram_ids="111",
+            hippo_vault_path=str(tmp_path),
+            **_NO_ENV,
+        )
+        assert config.hippo_dream_model == "claude-sonnet-4-5"
+
+    def test_custom_dream_model(self, tmp_path: Path) -> None:
+        config = HippoConfig(
+            telegram_bot_token="123:ABC",
+            allowed_telegram_ids="111",
+            hippo_vault_path=str(tmp_path),
+            hippo_dream_model="claude-haiku-4-5-20251001",
+            **_NO_ENV,
+        )
+        assert config.hippo_dream_model == "claude-haiku-4-5-20251001"
