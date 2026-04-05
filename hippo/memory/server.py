@@ -8,11 +8,13 @@ from typing import Any
 
 from claude_agent_sdk import create_sdk_mcp_server, tool
 
+from hippo.memory.episodic import ObsidianEpisodicStore
 from hippo.memory.semantic import ObsidianSemanticStore
 from hippo.memory.types import Entity, Relation
 
-# Module-level store, set by create_memory_server()
+# Module-level stores, set by create_memory_server()
 _store: ObsidianSemanticStore | None = None
+_episodic_store: ObsidianEpisodicStore | None = None
 
 
 def _get_store() -> ObsidianSemanticStore:
@@ -20,6 +22,13 @@ def _get_store() -> ObsidianSemanticStore:
         msg = "Memory server not initialized — call create_memory_server() first"
         raise RuntimeError(msg)
     return _store
+
+
+def _get_episodic_store() -> ObsidianEpisodicStore:
+    if _episodic_store is None:
+        msg = "Episodic store not initialized — call create_memory_server() first"
+        raise RuntimeError(msg)
+    return _episodic_store
 
 
 def _text(content: str) -> dict[str, Any]:
@@ -176,6 +185,59 @@ async def open_nodes(args: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Episodic tools
+# ---------------------------------------------------------------------------
+
+
+@tool(
+    "log_episode",
+    "Log a timestamped episode to today's daily note. Use after every meaningful exchange.",
+    {
+        "title": str,
+        "content": str,
+        "tags": list,
+    },
+)
+async def log_episode(args: dict[str, Any]) -> dict[str, Any]:
+    episode = await _get_episodic_store().log_episode(
+        title=args["title"],
+        content=args["content"],
+        tags=args.get("tags"),
+    )
+    return _text(f"Episode logged: {episode.date} {episode.time} — {episode.title}")
+
+
+@tool(
+    "recall_episodes",
+    "Recall past episodes from the daily journal. Supports date range and text search.",
+    {
+        "start_date": str,
+        "end_date": str,
+        "query": str,
+    },
+)
+async def recall_episodes(args: dict[str, Any]) -> dict[str, Any]:
+    episodes = await _get_episodic_store().recall_episodes(
+        start_date=args.get("start_date") or None,
+        end_date=args.get("end_date") or None,
+        query=args.get("query") or None,
+    )
+    if not episodes:
+        return _text("No episodes found.")
+    data = [
+        {
+            "date": ep.date,
+            "time": ep.time,
+            "title": ep.title,
+            "content": ep.content,
+            "tags": list(ep.tags),
+        }
+        for ep in episodes
+    ]
+    return _json_result(data)
+
+
+# ---------------------------------------------------------------------------
 # Serialisation helper
 # ---------------------------------------------------------------------------
 
@@ -208,12 +270,13 @@ def _graph_to_dict(graph: Any) -> dict[str, Any]:
 
 def create_memory_server(vault_path: Path) -> Any:
     """Create and return the MCP server with all memory tools wired up."""
-    global _store
+    global _store, _episodic_store
     _store = ObsidianSemanticStore(vault_path)
+    _episodic_store = ObsidianEpisodicStore(vault_path)
 
     return create_sdk_mcp_server(
         name="hippo-memory",
-        version="0.1.0",
+        version="0.2.0",
         tools=[
             create_entities,
             create_relations,
@@ -224,5 +287,7 @@ def create_memory_server(vault_path: Path) -> Any:
             read_graph,
             search_nodes,
             open_nodes,
+            log_episode,
+            recall_episodes,
         ],
     )
