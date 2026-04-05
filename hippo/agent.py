@@ -10,6 +10,7 @@ from hippo.memory.server import create_memory_server
 
 if TYPE_CHECKING:
     from hippo.config import HippoConfig
+    from hippo.memory.scheduled import ObsidianScheduledStore
 
 SYSTEM_PROMPT = """\
 You are Hippo, a personal assistant with persistent memory. You remember
@@ -84,18 +85,52 @@ record what happens in your conversations:
   matters, and any relevant context. More detail is better.
 - **Tags:** 2-5 lowercase tags for categorization (e.g., projekt, technik,
   entscheidung, persoenlich)
+
+## Scheduling
+
+You can schedule tasks for future execution. When the user asks you to
+remind them of something, check in later, or do anything at a specific
+time, use the scheduling tools:
+
+- **schedule_task** — Create a one-shot or recurring task. For one-shot,
+  provide an ISO datetime in the `time` field. For recurring, provide a
+  cron expression in the `cron` field. The description should be a prompt
+  for yourself — when the task fires, you receive this description as a
+  query and respond freely (using memory tools, etc.).
+- **list_scheduled_tasks** — Show all pending/active tasks.
+- **cancel_scheduled_task** — Remove a task by ID.
+
+### Scheduling guidelines
+
+- When the user says "remind me tomorrow at 10 to...", create a one-shot
+  task with the correct ISO datetime in their timezone ({timezone}).
+- When the user says "every Friday at 17:00, ask me...", create a
+  recurring task with cron "0 17 * * 5".
+- Write task descriptions as instructions to yourself, not as messages
+  to the user. Example: "Ask the user how their presentation went and
+  log the response as an episode."
+- Confirm scheduled tasks briefly: "Got it, I'll remind you tomorrow at 10."
 """
 
 
-async def create_agent(config: HippoConfig) -> ClaudeSDKClient:
-    """Create a Claude Agent SDK client wired to the memory MCP server."""
-    memory_server = create_memory_server(config.hippo_vault_path)
+async def create_agent(
+    config: HippoConfig,
+) -> tuple[ClaudeSDKClient, ObsidianScheduledStore]:
+    """Create a Claude Agent SDK client wired to the memory MCP server.
+
+    Returns (client, scheduled_store) tuple.
+    """
+    memory_server, scheduled_store = create_memory_server(
+        config.hippo_vault_path, config.hippo_timezone
+    )
+
+    prompt = SYSTEM_PROMPT.replace("{timezone}", config.hippo_timezone)
 
     options = ClaudeAgentOptions(
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=prompt,
         mcp_servers={"memory": memory_server},
         permission_mode="bypassPermissions",
         model=config.hippo_model,
         cwd=str(config.hippo_vault_path),
     )
-    return ClaudeSDKClient(options=options)
+    return ClaudeSDKClient(options=options), scheduled_store

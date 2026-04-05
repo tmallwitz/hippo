@@ -1,0 +1,93 @@
+"""Background scheduler — executes due tasks by querying the agent."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import datetime
+from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
+
+if TYPE_CHECKING:
+    from aiogram import Bot
+    from claude_agent_sdk import ClaudeSDKClient
+
+    from hippo.config import HippoConfig
+    from hippo.memory.scheduled import ObsidianScheduledStore
+    from hippo.memory.types import ScheduledTask
+
+log = logging.getLogger(__name__)
+
+_DEFAULT_INTERVAL = 30.0
+
+
+async def run_scheduler(
+    config: HippoConfig,
+    client: ClaudeSDKClient,
+    client_lock: asyncio.Lock,
+    bot: Bot,
+    store: ObsidianScheduledStore,
+    *,
+    interval: float = _DEFAULT_INTERVAL,
+) -> None:
+    """Run the scheduler loop, checking for due tasks every `interval` seconds."""
+    tz = ZoneInfo(config.hippo_timezone)
+    log.info(
+        "Scheduler started (interval=%.0fs, tz=%s)",
+        interval,
+        config.hippo_timezone,
+    )
+    while True:
+        try:
+            due_tasks = await store.get_due_tasks()
+            for task in due_tasks:
+                await _execute_task(task, config, client, client_lock, bot, store, tz)
+        except Exception:
+            log.exception("Scheduler tick failed")
+        await asyncio.sleep(interval)
+
+
+async def _execute_task(
+    task: ScheduledTask,
+    config: HippoConfig,
+    client: ClaudeSDKClient,
+    client_lock: asyncio.Lock,
+    bot: Bot,
+    store: ObsidianScheduledStore,
+    tz: ZoneInfo,
+) -> None:
+    """Execute a single due task: query agent, send result, update state."""
+    from hippo.telegram_bridge import convert_to_telegram, query_agent
+
+    log.info("Executing task %s: %s", task.id, task.description)
+
+    try:
+        async with client_lock:
+            response = await query_agent(client, task.description)
+    except Exception:
+        log.exception("Agent query failed for task %s", task.id)
+        return
+
+    # Send to all whitelisted users
+    for user_id in config.allowed_telegram_ids:
+        for part in convert_to_telegram(response):
+            try:
+                await bot.send_message(
+                    chat_id=user_id,
+                    text=part["text"],  # type: ignore[arg-type]
+                    entities=part["entities"],  # type: ignore[arg-type]
+                )
+            except Exception:
+                try:
+                    await bot.send_message(chat_id=user_id, text=str(part["text"]))
+                except Exception:
+                    log.exception("Failed to send scheduled message to %s", user_id)
+
+    # Update task state
+    now = datetime.now(tz)
+    if task.recurring:
+        await store.update_last_run(task.id, now.isoformat())
+        log.info("Recurring task %s: updated last_run", task.id)
+    else:
+        await store.mark_completed(task.id)
+        log.info("One-shot task %s: marked completed", task.id)

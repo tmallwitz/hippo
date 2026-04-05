@@ -13,7 +13,8 @@ if TYPE_CHECKING:
 
 @pytest.fixture()
 def tmp_vault(tmp_path: Path) -> Path:
-    """Create a temporary vault directory with semantic/ and episodic/ subfolders."""
+    """Create a temporary vault directory with memory subfolders."""
     (tmp_path / "semantic").mkdir()
     (tmp_path / "episodic").mkdir()
+    (tmp_path / "scheduled").mkdir()
     return tmp_path

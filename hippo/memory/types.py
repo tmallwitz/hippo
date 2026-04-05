@@ -36,3 +36,16 @@ class Episode(BaseModel, frozen=True):
     title: str
     content: str
     tags: tuple[str, ...] = ()
+
+
+class ScheduledTask(BaseModel, frozen=True):
+    """A task scheduled for future execution."""
+
+    id: str
+    description: str
+    time: str | None = None  # ISO datetime for one-shot
+    recurring: bool = False
+    cron: str | None = None  # cron expression for recurring
+    status: str = "pending"  # pending | active | completed
+    created: str  # ISO datetime
+    last_run: str | None = None  # ISO datetime, recurring only
