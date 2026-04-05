@@ -47,14 +47,25 @@ async def _async_main() -> None:
     from hippo.scheduler import run_scheduler
     from hippo.telegram_bridge import run_bot
 
-    client, scheduled_store, buffer_store, mailbox_store = await create_agent(config)
+    (
+        client,
+        scheduled_store,
+        buffer_store,
+        mailbox_store,
+        semantic_store,
+        episodic_store,
+    ) = await create_agent(config)
     bot = Bot(token=config.telegram_bot_token)
     client_lock = asyncio.Lock()
 
     async with client:
         log.info("Agent connected. Starting Telegram bot + scheduler…")
         await asyncio.gather(
-            run_bot(config, client, bot, client_lock, buffer_store, mailbox_store),
+            run_bot(
+                config, client, bot, client_lock,
+                buffer_store, mailbox_store,
+                scheduled_store, semantic_store, episodic_store,
+            ),
             run_scheduler(
                 config, client, client_lock, bot, scheduled_store, buffer_store, mailbox_store
             ),

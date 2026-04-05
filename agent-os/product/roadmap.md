@@ -288,7 +288,7 @@ a personalised layer stored in the vault.
 
 ## Phase 5: Telegram Upgrade
 
-**Status:** Planned
+**Status:** Done
 
 Extend the Telegram bridge to handle non-text input and expose
 quick-access commands for common operations.

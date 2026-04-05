@@ -22,6 +22,8 @@ class HippoConfig(BaseSettings):
     hippo_dream_model: str = "claude-sonnet-4-5"
     hippo_timezone: str = "Europe/Berlin"
     hippo_buffer_max_entries: int = 50
+    hippo_whisper_model: str = "base"
+    hippo_whisper_language: str | None = None  # e.g. "de", "en" — None = auto-detect
 
     @field_validator("allowed_telegram_ids", mode="before")
     @classmethod
