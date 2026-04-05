@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ChatAction
-from aiogram.filters import BaseFilter
+from aiogram.filters import BaseFilter, Command
 from aiogram.types import Message, MessageEntity
 from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock
 from telegramify_markdown import convert
@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from claude_agent_sdk import ClaudeSDKClient
 
     from hippo.config import HippoConfig
+    from hippo.memory.buffer import ObsidianBufferStore
+    from hippo.memory.mailbox import ObsidianMailboxStore
 
 log = logging.getLogger(__name__)
 
@@ -157,12 +159,42 @@ async def run_bot(
     client: ClaudeSDKClient,
     bot: Bot,
     client_lock: asyncio.Lock,
+    buffer_store: ObsidianBufferStore,
+    mailbox_store: ObsidianMailboxStore,
 ) -> None:
     """Start the Telegram bot and poll for messages."""
+    from hippo.dream.runner import run_dream
+
     dp = Dispatcher()
 
     allowed_ids = set(config.allowed_telegram_ids)
     whitelist = _WhitelistFilter(allowed_ids)
+
+    @dp.message(whitelist, Command("dream"))
+    async def handle_dream(message: Message) -> None:
+        chat_id = message.chat.id
+        await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        await message.answer("Dreaming… this may take a moment.")
+
+        stop_typing = asyncio.Event()
+        typing_task = asyncio.create_task(_keep_typing(bot, chat_id, stop_typing))
+        try:
+            report = await run_dream(config, buffer_store, mailbox_store)
+        except Exception as exc:
+            log.exception("Dream cycle failed")
+            report = f"Dream cycle failed: {exc}"
+        finally:
+            stop_typing.set()
+            await typing_task
+
+        for part in convert_to_telegram(report):
+            try:
+                await message.answer(
+                    text=part["text"],  # type: ignore[arg-type]
+                    entities=part["entities"],  # type: ignore[arg-type]
+                )
+            except Exception:
+                await message.answer(str(part["text"]))
 
     @dp.message(whitelist)
     async def handle_message(message: Message) -> None:

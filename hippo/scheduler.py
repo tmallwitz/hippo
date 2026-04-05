@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from claude_agent_sdk import ClaudeSDKClient
 
     from hippo.config import HippoConfig
+    from hippo.memory.buffer import ObsidianBufferStore
+    from hippo.memory.mailbox import ObsidianMailboxStore
     from hippo.memory.scheduled import ObsidianScheduledStore
     from hippo.memory.types import ScheduledTask
 
@@ -27,15 +29,18 @@ async def run_scheduler(
     client_lock: asyncio.Lock,
     bot: Bot,
     store: ObsidianScheduledStore,
+    buffer_store: ObsidianBufferStore,
+    mailbox_store: ObsidianMailboxStore,
     *,
     interval: float = _DEFAULT_INTERVAL,
 ) -> None:
     """Run the scheduler loop, checking for due tasks every `interval` seconds."""
     tz = ZoneInfo(config.hippo_timezone)
     log.info(
-        "Scheduler started (interval=%.0fs, tz=%s)",
+        "Scheduler started (interval=%.0fs, tz=%s, buffer_max=%d)",
         interval,
         config.hippo_timezone,
+        config.hippo_buffer_max_entries,
     )
     while True:
         try:
@@ -44,7 +49,55 @@ async def run_scheduler(
                 await _execute_task(task, config, client, client_lock, bot, store, tz)
         except Exception:
             log.exception("Scheduler tick failed")
+
+        try:
+            await _maybe_trigger_dream(config, buffer_store, mailbox_store, bot)
+        except Exception:
+            log.exception("Buffer check failed")
+
         await asyncio.sleep(interval)
+
+
+async def _maybe_trigger_dream(
+    config: HippoConfig,
+    buffer_store: ObsidianBufferStore,
+    mailbox_store: ObsidianMailboxStore,
+    bot: Bot,
+) -> None:
+    """Trigger the dream cycle automatically if the buffer is full."""
+    from hippo.dream.runner import _dream_running, run_dream
+
+    if _dream_running.is_set():
+        return
+
+    entries = await buffer_store.read_buffer()
+    if len(entries) < config.hippo_buffer_max_entries:
+        return
+
+    log.info(
+        "Buffer full (%d/%d entries) — triggering automatic dream cycle",
+        len(entries),
+        config.hippo_buffer_max_entries,
+    )
+
+    from hippo.telegram_bridge import convert_to_telegram
+
+    report = await run_dream(config, buffer_store, mailbox_store)
+
+    for user_id in config.allowed_telegram_ids:
+        await bot.send_message(chat_id=user_id, text="💤 Dream cycle (auto)")
+        for part in convert_to_telegram(report):
+            try:
+                await bot.send_message(
+                    chat_id=user_id,
+                    text=part["text"],  # type: ignore[arg-type]
+                    entities=part["entities"],  # type: ignore[arg-type]
+                )
+            except Exception:
+                try:
+                    await bot.send_message(chat_id=user_id, text=str(part["text"]))
+                except Exception:
+                    log.exception("Failed to send dream report to %s", user_id)
 
 
 async def _execute_task(

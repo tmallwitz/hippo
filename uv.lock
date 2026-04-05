@@ -528,6 +528,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "python-frontmatter" },
+    { name = "pyyaml" },
     { name = "telegramify-markdown" },
     { name = "tzdata" },
 ]
@@ -549,6 +550,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-frontmatter", specifier = ">=1.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "telegramify-markdown", specifier = ">=1.1.1" },
     { name = "tzdata", specifier = ">=2026.1" },
 ]

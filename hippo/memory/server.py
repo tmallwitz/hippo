@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from claude_agent_sdk import create_sdk_mcp_server, tool
 
+from hippo.memory.buffer import ObsidianBufferStore
 from hippo.memory.episodic import ObsidianEpisodicStore
+from hippo.memory.mailbox import ObsidianMailboxStore, load_bot_registry
 from hippo.memory.scheduled import ObsidianScheduledStore
 from hippo.memory.semantic import ObsidianSemanticStore
-from hippo.memory.types import Entity, Relation
+from hippo.memory.types import BufferEntry, Entity, Relation
 
 # Module-level stores, set by create_memory_server()
 _store: ObsidianSemanticStore | None = None
 _episodic_store: ObsidianEpisodicStore | None = None
 _scheduled_store: ObsidianScheduledStore | None = None
+_buffer_store: ObsidianBufferStore | None = None
+_mailbox_store: ObsidianMailboxStore | None = None
+_bot_name: str = "alice"
 
 
 def _get_store() -> ObsidianSemanticStore:
@@ -38,6 +44,20 @@ def _get_scheduled_store() -> ObsidianScheduledStore:
         msg = "Scheduled store not initialized — call create_memory_server() first"
         raise RuntimeError(msg)
     return _scheduled_store
+
+
+def _get_buffer_store() -> ObsidianBufferStore:
+    if _buffer_store is None:
+        msg = "Buffer store not initialized — call create_memory_server() first"
+        raise RuntimeError(msg)
+    return _buffer_store
+
+
+def _get_mailbox_store() -> ObsidianMailboxStore:
+    if _mailbox_store is None:
+        msg = "Mailbox store not initialized — call create_memory_server() first"
+        raise RuntimeError(msg)
+    return _mailbox_store
 
 
 def _text(content: str) -> dict[str, Any]:
@@ -310,6 +330,87 @@ async def cancel_scheduled_task(args: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Short-term buffer tools
+# ---------------------------------------------------------------------------
+
+
+@tool(
+    "remember",
+    "Quickly note something for later. Appends a raw entry to the short-term buffer "
+    "without any structure. Use liberally — the dream cycle will classify it later.",
+    {
+        "content": str,
+        "tags": list,
+    },
+)
+async def remember(args: dict[str, Any]) -> dict[str, Any]:
+    ts = datetime.now(UTC).isoformat()
+    entry = BufferEntry(
+        ts=ts,
+        session=f"tg-{_bot_name}",
+        content=args["content"],
+        tags=tuple(args.get("tags") or []),
+    )
+    await _get_buffer_store().append(entry)
+    return _text(f"Remembered: {entry.content[:80]}")
+
+
+# ---------------------------------------------------------------------------
+# Inter-bot mailbox tools
+# ---------------------------------------------------------------------------
+
+
+@tool(
+    "send_message",
+    "Send a message to another bot's inbox. The message will be processed during "
+    "that bot's next dream cycle.",
+    {
+        "bot_name": str,
+        "subject": str,
+        "content": str,
+    },
+)
+async def send_message(args: dict[str, Any]) -> dict[str, Any]:
+    target_name = args["bot_name"]
+    registry = load_bot_registry(Path.cwd())
+    if target_name not in registry:
+        return _text(
+            f"Bot '{target_name}' not found in bots.yaml. Available: {list(registry.keys())}"
+        )
+    target_vault = registry[target_name]
+    ts = datetime.now(UTC).isoformat()
+    await _get_mailbox_store().send_message(
+        target_vault=target_vault,
+        from_bot=_bot_name,
+        subject=args["subject"],
+        content=args["content"],
+        ts=ts,
+    )
+    return _text(f"Message sent to {target_name}: {args['subject']}")
+
+
+@tool(
+    "read_inbox",
+    "Read all messages in this bot's inbox.",
+    {},
+)
+async def read_inbox(args: dict[str, Any]) -> dict[str, Any]:
+    messages = await _get_mailbox_store().read_inbox()
+    if not messages:
+        return _text("Inbox is empty.")
+    data = [
+        {
+            "from": m.from_bot,
+            "ts": m.ts,
+            "subject": m.subject,
+            "content": m.content,
+        }
+        for m in messages
+    ]
+    return _json_result(data)
+
+
+# ---------------------------------------------------------------------------
 # Serialisation helper
 # ---------------------------------------------------------------------------
 
@@ -341,17 +442,22 @@ def _graph_to_dict(graph: Any) -> dict[str, Any]:
 
 
 def create_memory_server(
-    vault_path: Path, timezone: str = "UTC"
-) -> tuple[Any, ObsidianScheduledStore]:
-    """Create the MCP server and return it with the scheduled store."""
-    global _store, _episodic_store, _scheduled_store
+    vault_path: Path,
+    timezone: str = "UTC",
+    bot_name: str = "alice",
+) -> tuple[Any, ObsidianScheduledStore, ObsidianBufferStore]:
+    """Create the MCP server and return it with the scheduled and buffer stores."""
+    global _store, _episodic_store, _scheduled_store, _buffer_store, _mailbox_store, _bot_name
+    _bot_name = bot_name
     _store = ObsidianSemanticStore(vault_path)
     _episodic_store = ObsidianEpisodicStore(vault_path)
     _scheduled_store = ObsidianScheduledStore(vault_path, timezone)
+    _buffer_store = ObsidianBufferStore(vault_path)
+    _mailbox_store = ObsidianMailboxStore(vault_path, bot_name)
 
     server = create_sdk_mcp_server(
         name="hippo-memory",
-        version="0.3.0",
+        version="0.4.0",
         tools=[
             create_entities,
             create_relations,
@@ -367,6 +473,36 @@ def create_memory_server(
             schedule_task,
             list_scheduled_tasks,
             cancel_scheduled_task,
+            remember,
+            send_message,
+            read_inbox,
         ],
     )
-    return server, _scheduled_store
+    return server, _scheduled_store, _buffer_store
+
+
+def create_dream_server() -> Any:
+    """Create a subset MCP server for the dream sub-agent.
+
+    Requires create_memory_server() to have been called first.
+    Exposes only semantic, episodic, and read_inbox tools — not
+    the scheduler, remember, or send_message tools.
+    """
+    return create_sdk_mcp_server(
+        name="hippo-dream",
+        version="0.4.0",
+        tools=[
+            create_entities,
+            create_relations,
+            add_observations,
+            delete_entities,
+            delete_observations,
+            delete_relations,
+            read_graph,
+            search_nodes,
+            open_nodes,
+            log_episode,
+            recall_episodes,
+            read_inbox,
+        ],
+    )

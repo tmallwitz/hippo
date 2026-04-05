@@ -49,3 +49,36 @@ class ScheduledTask(BaseModel, frozen=True):
     status: str = "pending"  # pending | active | completed
     created: str  # ISO datetime
     last_run: str | None = None  # ISO datetime, recurring only
+
+
+class BufferEntry(BaseModel, frozen=True):
+    """A raw, unstructured entry in the short-term buffer."""
+
+    ts: str  # ISO datetime (UTC)
+    session: str  # e.g. "tg-12345" (telegram user ID)
+    content: str
+    tags: tuple[str, ...] = ()
+
+
+class MailboxMessage(BaseModel, frozen=True):
+    """An inter-bot message deposited in a bot's inbox."""
+
+    from_bot: str
+    to_bot: str
+    ts: str  # ISO datetime (UTC)
+    subject: str
+    content: str
+
+
+class DreamReport(BaseModel, frozen=True):
+    """Summary produced by a dream cycle run."""
+
+    date: str  # YYYY-MM-DD
+    entries_processed: int
+    entities_created: tuple[str, ...] = ()
+    observations_added: int = 0
+    episodes_logged: int = 0
+    skills_created: tuple[str, ...] = ()
+    messages_processed: int = 0
+    entries_discarded: int = 0
+    summary: str = ""

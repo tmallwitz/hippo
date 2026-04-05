@@ -9,7 +9,7 @@ pulled forward into an earlier one.
 
 ## Phase 1: Semantic Memory + Telegram Bridge
 
-**Status:** Planned
+**Status:** Done
 
 Port the core knowledge-graph memory system to Python and connect it to
 Telegram. Delivers a working bot that remembers facts across sessions.
@@ -43,7 +43,7 @@ Telegram. Delivers a working bot that remembers facts across sessions.
 
 ## Phase 2: Episodic Memory
 
-**Status:** Planned
+**Status:** Done
 
 Add a time-ordered memory layer alongside the semantic knowledge graph.
 Delivers the bot's ability to remember "what happened when" in addition
@@ -69,7 +69,7 @@ to "what is true".
 
 ## Phase 2b: Scheduler
 
-**Status:** Planned
+**Status:** Done
 
 Give the bot the ability to perform actions at scheduled times. This
 turns Hippo from a reactive assistant into a proactive one that can
@@ -121,7 +121,7 @@ remind, check in, and act autonomously on a schedule.
 
 ## Phase 3: Short-Term Buffer + Dream Cycle + Inter-Bot Mailbox
 
-**Status:** Planned
+**Status:** In Progress
 
 Introduce the two-stage memory model and autonomous consolidation.
 Delivers the bot's ability to learn overnight and for multiple bots
