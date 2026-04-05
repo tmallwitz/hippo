@@ -58,8 +58,62 @@ def _format_inbox_messages(messages: tuple[MailboxMessage, ...]) -> str:
     return "\n".join(lines)
 
 
+def _scan_raw_documents(vault_path: Path) -> list[tuple[str, str]]:
+    """Scan ``raw/`` for unprocessed documents.
+
+    Returns a list of ``(filename, content)`` for ``.md`` and ``.txt`` files.
+    Skips the ``raw/processed/`` subdirectory.
+    """
+    raw_dir = vault_path / "raw"
+    if not raw_dir.is_dir():
+        return []
+    (raw_dir / "processed").mkdir(exist_ok=True)
+    documents: list[tuple[str, str]] = []
+    for path in sorted(raw_dir.iterdir()):
+        if path.is_dir():
+            continue
+        if path.suffix.lower() not in {".md", ".txt", ".markdown"}:
+            continue
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            log.warning("Raw ingest: could not read %s", path.name)
+            continue
+        documents.append((path.name, content))
+    return documents
+
+
+def _format_raw_documents(docs: list[tuple[str, str]]) -> str:
+    if not docs:
+        return ""
+    _max_chars = 10_000
+    lines = ["## Raw Documents for Ingest\n"]
+    for i, (name, content) in enumerate(docs, 1):
+        if len(content) > _max_chars:
+            content = content[:_max_chars] + "\n[...truncated]"
+        lines.append(f"### Document {i}: {name}\n{content}\n")
+    return "\n".join(lines)
+
+
+def _move_raw_to_processed(vault_path: Path, filenames: list[str]) -> int:
+    """Move processed raw files to ``raw/processed/``. Returns count moved."""
+    raw_dir = vault_path / "raw"
+    processed_dir = raw_dir / "processed"
+    processed_dir.mkdir(exist_ok=True)
+    count = 0
+    for name in filenames:
+        src = raw_dir / name
+        dst = processed_dir / name
+        if src.exists():
+            src.rename(dst)
+            count += 1
+    return count
+
+
 def _build_query(
-    buffer_entries: tuple[BufferEntry, ...], inbox_messages: tuple[MailboxMessage, ...]
+    buffer_entries: tuple[BufferEntry, ...],
+    inbox_messages: tuple[MailboxMessage, ...],
+    raw_documents: list[tuple[str, str]] | None = None,
 ) -> str:
     parts = [
         "Please consolidate the following entries into long-term memory.\n"
@@ -67,10 +121,13 @@ def _build_query(
     ]
     buffer_text = _format_buffer_entries(buffer_entries)
     inbox_text = _format_inbox_messages(inbox_messages)
+    raw_text = _format_raw_documents(raw_documents or [])
     if buffer_text:
         parts.append(buffer_text)
     if inbox_text:
         parts.append(inbox_text)
+    if raw_text:
+        parts.append(raw_text)
     return "\n".join(parts)
 
 
@@ -91,21 +148,34 @@ async def _query_dream_agent(client: ClaudeSDKClient, query: str) -> str:
 
 
 def _write_dream_report(vault_path: Path, date: str, agent_output: str, is_empty: bool) -> str:
-    """Write the dream report to ``dream_reports/YYYY-MM-DD.md``."""
+    """Write the dream report to ``dream_reports/YYYY-MM-DD.md``.
+
+    First run of the day creates the file with YAML frontmatter.
+    Subsequent runs on the same day append with a separator.
+    """
     reports_dir = vault_path / "dream_reports"
     reports_dir.mkdir(exist_ok=True)
 
     body = "Nothing to consolidate — buffer and inbox were empty." if is_empty else agent_output
-
-    post = frontmatter.Post(
-        body,
-        **{
-            "date": date,
-            "generated": datetime.now(UTC).isoformat(),
-        },
-    )
+    run_ts = datetime.now(UTC).strftime("%H:%M UTC")
     report_path = reports_dir / f"{date}.md"
-    report_path.write_text(frontmatter.dumps(post), encoding="utf-8")
+
+    if report_path.exists():
+        existing = report_path.read_text(encoding="utf-8")
+        report_path.write_text(
+            existing + f"\n\n---\n\n## Run at {run_ts}\n\n{body}\n",
+            encoding="utf-8",
+        )
+    else:
+        post = frontmatter.Post(
+            f"## Run at {run_ts}\n\n{body}",
+            **{
+                "date": date,
+                "generated": datetime.now(UTC).isoformat(),
+            },
+        )
+        report_path.write_text(frontmatter.dumps(post), encoding="utf-8")
+
     return body
 
 
@@ -132,21 +202,25 @@ async def run_dream(
     _dream_running.set()
     date = datetime.now(UTC).strftime("%Y-%m-%d")
 
+    raw_docs: list[tuple[str, str]] = []
+
     try:
         buffer_entries = await buffer_store.read_buffer()
         inbox_messages = await mailbox_store.read_inbox()
+        raw_docs = await asyncio.to_thread(_scan_raw_documents, config.hippo_vault_path)
 
-        is_empty = not buffer_entries and not inbox_messages
+        is_empty = not buffer_entries and not inbox_messages and not raw_docs
 
         if is_empty:
-            log.info("Dream cycle: buffer and inbox empty, skipping LLM")
+            log.info("Dream cycle: buffer, inbox, and raw folder empty, skipping LLM")
             report = _write_dream_report(config.hippo_vault_path, date, "", is_empty=True)
             return report
 
         log.info(
-            "Dream cycle: processing %d buffer entries, %d inbox messages",
+            "Dream cycle: processing %d buffer entries, %d inbox messages, %d raw documents",
             len(buffer_entries),
             len(inbox_messages),
+            len(raw_docs),
         )
 
         dream_server = create_dream_server()
@@ -158,7 +232,7 @@ async def run_dream(
             cwd=str(config.hippo_vault_path),
         )
 
-        query = _build_query(buffer_entries, inbox_messages)
+        query = _build_query(buffer_entries, inbox_messages, raw_docs)
         agent_output = ""
 
         async with ClaudeSDKClient(options=options) as client:
@@ -180,5 +254,16 @@ async def run_dream(
             log.info("Dream cycle: cleared %d inbox messages", cleared)
         except Exception:
             log.exception("Dream cycle: failed to clear inbox")
+
+        if raw_docs:
+            try:
+                moved = await asyncio.to_thread(
+                    _move_raw_to_processed,
+                    config.hippo_vault_path,
+                    [name for name, _ in raw_docs],
+                )
+                log.info("Dream cycle: moved %d raw documents to processed", moved)
+            except Exception:
+                log.exception("Dream cycle: failed to move raw documents")
 
         _dream_running.clear()

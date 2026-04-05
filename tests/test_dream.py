@@ -159,6 +159,90 @@ class TestArchiveOnCompletion:
         assert remaining == ()
 
 
+class TestRawDocuments:
+    def test_scan_finds_md_and_txt(self, tmp_vault: Path) -> None:
+        from hippo.dream.runner import _scan_raw_documents
+
+        (tmp_vault / "raw" / "note.md").write_text("# Hello\nsome content", encoding="utf-8")
+        (tmp_vault / "raw" / "data.txt").write_text("plain text", encoding="utf-8")
+        (tmp_vault / "raw" / "image.png").write_bytes(b"\x89PNG")
+
+        docs = _scan_raw_documents(tmp_vault)
+        names = [name for name, _ in docs]
+        assert "note.md" in names
+        assert "data.txt" in names
+        assert "image.png" not in names
+
+    def test_scan_ignores_processed_subdir(self, tmp_vault: Path) -> None:
+        from hippo.dream.runner import _scan_raw_documents
+
+        (tmp_vault / "raw" / "active.md").write_text("active", encoding="utf-8")
+        (tmp_vault / "raw" / "processed" / "old.md").write_text("old", encoding="utf-8")
+
+        docs = _scan_raw_documents(tmp_vault)
+        names = [name for name, _ in docs]
+        assert "active.md" in names
+        assert "old.md" not in names
+
+    def test_scan_returns_empty_when_no_raw_dir(self, tmp_vault: Path) -> None:
+        import shutil
+
+        from hippo.dream.runner import _scan_raw_documents
+
+        shutil.rmtree(tmp_vault / "raw")
+        assert _scan_raw_documents(tmp_vault) == []
+
+    def test_move_to_processed(self, tmp_vault: Path) -> None:
+        from hippo.dream.runner import _move_raw_to_processed
+
+        (tmp_vault / "raw" / "doc.md").write_text("content", encoding="utf-8")
+
+        moved = _move_raw_to_processed(tmp_vault, ["doc.md"])
+        assert moved == 1
+        assert not (tmp_vault / "raw" / "doc.md").exists()
+        assert (tmp_vault / "raw" / "processed" / "doc.md").exists()
+
+    def test_format_truncates_large_files(self) -> None:
+        from hippo.dream.runner import _format_raw_documents
+
+        large = "x" * 20_000
+        result = _format_raw_documents([("big.md", large)])
+        assert "[...truncated]" in result
+        assert len(result) < 15_000
+
+
+class TestReportAppend:
+    def test_first_run_creates_file_with_frontmatter(self, tmp_vault: Path) -> None:
+        from hippo.dream.runner import _write_dream_report
+
+        _write_dream_report(tmp_vault, "2026-04-05", "First run content", is_empty=False)
+
+        report = (tmp_vault / "dream_reports" / "2026-04-05.md").read_text(encoding="utf-8")
+        assert "First run content" in report
+        assert "2026-04-05" in report
+
+    def test_second_run_appends_with_separator(self, tmp_vault: Path) -> None:
+        from hippo.dream.runner import _write_dream_report
+
+        _write_dream_report(tmp_vault, "2026-04-05", "First run content", is_empty=False)
+        _write_dream_report(tmp_vault, "2026-04-05", "Second run content", is_empty=False)
+
+        report = (tmp_vault / "dream_reports" / "2026-04-05.md").read_text(encoding="utf-8")
+        assert "First run content" in report
+        assert "Second run content" in report
+        assert "---" in report
+
+    def test_only_one_file_per_day(self, tmp_vault: Path) -> None:
+        from hippo.dream.runner import _write_dream_report
+
+        _write_dream_report(tmp_vault, "2026-04-05", "Run 1", is_empty=False)
+        _write_dream_report(tmp_vault, "2026-04-05", "Run 2", is_empty=False)
+        _write_dream_report(tmp_vault, "2026-04-05", "Run 3", is_empty=False)
+
+        reports = list((tmp_vault / "dream_reports").glob("*.md"))
+        assert len(reports) == 1
+
+
 async def _empty_async_gen():  # type: ignore[return]
     """Async generator that yields nothing (simulates empty agent response)."""
     return

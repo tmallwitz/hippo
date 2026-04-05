@@ -37,6 +37,10 @@ async def _async_main() -> None:
         config.hippo_model,
     )
 
+    from hippo.setup import setup_vault
+
+    setup_vault(config.hippo_vault_path)
+
     from aiogram import Bot
 
     from hippo.agent import create_agent

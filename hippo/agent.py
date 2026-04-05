@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
@@ -33,7 +34,14 @@ Obsidian vault. Use these tools proactively:
 - **search_nodes** — Before answering questions about the user or their world,
   search your memory first. This is your primary recall mechanism.
 - **open_nodes** — When you need full detail about specific entities.
-- **read_graph** — Use sparingly; returns everything. Prefer search_nodes.
+- **read_graph** — Last resort only; returns everything and is expensive.
+  Prefer the index + search_nodes instead (see below).
+
+When answering broad questions ("what do you know about me?", "remind me
+what we covered on X"), start by reading `semantic/index.md` if it exists.
+It contains a one-line summary of every entity and is much cheaper than
+`read_graph`. After scanning the index, use `open_nodes` or `search_nodes`
+to fetch the full detail you need.
 
 ## Entity types
 
@@ -137,6 +145,14 @@ You can send messages to other bots and read your own inbox:
 """
 
 
+def _load_personality_ext(vault_path: Path) -> str:
+    """Return the contents of personality/prompt_ext.md, or empty string."""
+    ext_file = vault_path / "personality" / "prompt_ext.md"
+    if ext_file.exists():
+        return "\n\n## Learnt personality\n\n" + ext_file.read_text(encoding="utf-8").strip()
+    return ""
+
+
 async def create_agent(
     config: HippoConfig,
 ) -> tuple[ClaudeSDKClient, ObsidianScheduledStore, ObsidianBufferStore, ObsidianMailboxStore]:
@@ -154,7 +170,8 @@ async def create_agent(
 
     mailbox_store = _MailboxStore(config.hippo_vault_path, config.hippo_bot_name)
 
-    prompt = SYSTEM_PROMPT.replace("{timezone}", config.hippo_timezone)
+    personality_ext = _load_personality_ext(config.hippo_vault_path)
+    prompt = SYSTEM_PROMPT.replace("{timezone}", config.hippo_timezone) + personality_ext
 
     options = ClaudeAgentOptions(
         system_prompt=prompt,

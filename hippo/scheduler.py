@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
@@ -46,7 +46,9 @@ async def run_scheduler(
         try:
             due_tasks = await store.get_due_tasks()
             for task in due_tasks:
-                await _execute_task(task, config, client, client_lock, bot, store, tz)
+                await _execute_task(
+                    task, config, client, client_lock, bot, store, buffer_store, tz
+                )
         except Exception:
             log.exception("Scheduler tick failed")
 
@@ -107,9 +109,11 @@ async def _execute_task(
     client_lock: asyncio.Lock,
     bot: Bot,
     store: ObsidianScheduledStore,
+    buffer_store: ObsidianBufferStore,
     tz: ZoneInfo,
 ) -> None:
     """Execute a single due task: query agent, send result, update state."""
+    from hippo.memory.types import BufferEntry
     from hippo.telegram_bridge import convert_to_telegram, query_agent
 
     log.info("Executing task %s: %s", task.id, task.description)
@@ -120,6 +124,18 @@ async def _execute_task(
     except Exception:
         log.exception("Agent query failed for task %s", task.id)
         return
+
+    # Feed result into the short-term buffer for dream consolidation
+    entry = BufferEntry(
+        ts=datetime.now(UTC).isoformat(),
+        session=f"scheduler-{task.id}",
+        content=f"Scheduled task [{task.description}]: {response}",
+        tags=("scheduler",),
+    )
+    try:
+        await buffer_store.append(entry)
+    except Exception:
+        log.exception("Failed to append scheduler result to buffer for task %s", task.id)
 
     # Send to all whitelisted users
     for user_id in config.allowed_telegram_ids:
