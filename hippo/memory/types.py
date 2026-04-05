@@ -26,3 +26,13 @@ class KnowledgeGraph(BaseModel, frozen=True):
 
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
+
+
+class Episode(BaseModel, frozen=True):
+    """A single timestamped entry in the episodic journal."""
+
+    date: str  # YYYY-MM-DD
+    time: str  # HH:MM
+    title: str
+    content: str
+    tags: tuple[str, ...] = ()

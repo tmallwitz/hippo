@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
-from hippo.memory.types import Entity, KnowledgeGraph, Relation
+from hippo.memory.types import Entity, Episode, KnowledgeGraph, Relation
 
 
 class SemanticStore(Protocol):
@@ -64,4 +65,27 @@ class SemanticStore(Protocol):
 
     async def open_nodes(self, names: list[str]) -> KnowledgeGraph:
         """Load specific entities by name with their inter-relations."""
+        ...
+
+
+class EpisodicStore(Protocol):
+    """Protocol for episodic (journal) memory backends."""
+
+    async def log_episode(
+        self,
+        title: str,
+        content: str,
+        tags: list[str] | None = None,
+        timestamp: datetime | None = None,
+    ) -> Episode:
+        """Append a new episode to today's daily note. Returns the created episode."""
+        ...
+
+    async def recall_episodes(
+        self,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        query: str | None = None,
+    ) -> list[Episode]:
+        """Retrieve episodes, optionally filtered by date range and/or text query."""
         ...
