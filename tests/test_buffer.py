@@ -147,8 +147,15 @@ class TestMigration:
 
         jsonl = tmp_vault / "short_term" / "buffer.jsonl"
         jsonl.write_text(
-            json.dumps({"ts": "2026-04-05T10:00:00Z", "session": "tg-alice",
-                        "content": "migrated entry", "tags": ["test"]}) + "\n",
+            json.dumps(
+                {
+                    "ts": "2026-04-05T10:00:00Z",
+                    "session": "tg-alice",
+                    "content": "migrated entry",
+                    "tags": ["test"],
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
         ObsidianBufferStore(tmp_vault)
@@ -162,8 +169,15 @@ class TestMigration:
 
         jsonl = tmp_vault / "short_term" / "buffer.jsonl"
         jsonl.write_text(
-            json.dumps({"ts": "2026-01-01T00:00:00Z", "session": "debug",
-                        "content": "DEBUG TEST ENTRY", "tags": []}) + "\n",
+            json.dumps(
+                {
+                    "ts": "2026-01-01T00:00:00Z",
+                    "session": "debug",
+                    "content": "DEBUG TEST ENTRY",
+                    "tags": [],
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
         ObsidianBufferStore(tmp_vault)  # triggers migration
