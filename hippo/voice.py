@@ -15,7 +15,7 @@ _loaded: tuple[str, Any] | None = None
 
 
 def _load_model(model_name: str) -> Any:
-    import whisper  # type: ignore[import]
+    import whisper
 
     global _loaded
     if _loaded is None or _loaded[0] != model_name:
@@ -36,7 +36,7 @@ def _transcribe_sync(audio_bytes: bytes, model_name: str, language: str | None) 
         kwargs: dict[str, Any] = {}
         if language:
             kwargs["language"] = language
-        result: dict[str, Any] = model.transcribe(tmp_path, **kwargs)  # type: ignore[assignment]
+        result: dict[str, Any] = model.transcribe(tmp_path, **kwargs)
     finally:
         os.unlink(tmp_path)
     return str(result.get("text", "")).strip()

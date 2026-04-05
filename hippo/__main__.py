@@ -62,9 +62,15 @@ async def _async_main() -> None:
         log.info("Agent connected. Starting Telegram bot + scheduler…")
         await asyncio.gather(
             run_bot(
-                config, client, bot, client_lock,
-                buffer_store, mailbox_store,
-                scheduled_store, semantic_store, episodic_store,
+                config,
+                client,
+                bot,
+                client_lock,
+                buffer_store,
+                mailbox_store,
+                scheduled_store,
+                semantic_store,
+                episodic_store,
             ),
             run_scheduler(
                 config, client, client_lock, bot, scheduled_store, buffer_store, mailbox_store
