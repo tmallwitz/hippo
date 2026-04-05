@@ -31,6 +31,43 @@ memory consolidation during sleep in mammals.
   (one user per bot, local deployment, Claude Pro OAuth).
 - Finished. See [PLAN.md](./PLAN.md) for the phased roadmap.
 
+## Getting started
+
+### Prerequisites
+
+- Python 3.12+
+- [`uv`](https://docs.astral.sh/uv/) package manager
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+- Claude Code CLI authenticated (`claude login`)
+- An Obsidian vault directory (or any empty directory)
+
+### Setup
+
+```bash
+git clone https://github.com/tmallwitz/hippo.git
+cd hippo
+cp .env.example .env
+# Edit .env with your Telegram token, user ID, and vault path
+uv sync
+```
+
+### Run
+
+```bash
+uv run hippo
+```
+
+The bot will connect to Telegram and start responding to whitelisted users.
+Tell it facts and it will store them as Markdown files in your vault.
+
+### Test
+
+```bash
+uv run pytest
+uv run ruff check
+uv run mypy hippo/
+```
+
 ## Architecture
 
 See [PLAN.md](./PLAN.md) for the original design document and the

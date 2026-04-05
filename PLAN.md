@@ -262,6 +262,56 @@ Das hält den Kontext schlank und gibt dem Agent echte Agency über sein Erinner
 
 ---
 
+## Phase 2b — Scheduler
+
+**Ziel:** Hippo wird proaktiv. Der Bot kann zu definierten Zeitpunkten
+selbstständig Aktionen ausführen — Erinnerungen senden, Check-ins starten,
+Zusammenfassungen liefern. Macht den Schritt vom reaktiven Assistenten
+zum autonomen Agenten.
+
+### Scope
+
+- Drei neue Tools:
+  - `schedule_task(description, cron_or_time, channel?)` — Task anlegen
+  - `list_scheduled_tasks()` — alle anstehenden Tasks anzeigen
+  - `cancel_scheduled_task(id)` — Task entfernen
+- Persistenz als YAML/Markdown-Dateien in `scheduled/` im Vault
+  (in Obsidian sichtbar und editierbar)
+- Scheduler-Loop im Bot-Prozess, prüft regelmäßig auf fällige Tasks
+- Fällige Tasks werden als Agent-Query ausgeführt, Ergebnis geht
+  per Telegram an den User
+- Einmal-Tasks (Datetime) und wiederkehrende Tasks (Cron-artig)
+- Timezone-aware (konfiguriert via `HIPPO_TIMEZONE` in `.env`)
+
+### Anwendungsfälle
+
+- **Erinnerungen:** "Erinner mich morgen um 10 an den Zahnarzt"
+- **Wiederkehrende Check-ins:** "Frag mich jeden Freitag um 17 Uhr
+  was ich diese Woche geschafft habe" (Antwort wird als Episode geloggt)
+- **Proaktive Zusammenfassung:** "Jeden Morgen um 8, sag mir was
+  gerade ansteht" (Agent durchsucht semantisches + episodisches Gedächtnis)
+- **Verzögertes Follow-up:** "In 2 Stunden, frag mich wie die Präsi lief"
+
+### Integration mit anderen Schichten
+
+- Scheduler kann episodisches Logging (Phase 2) triggern — ein
+  wiederkehrender "Journal-Prompt" füllt das episodische Gedächtnis
+  natürlich auf
+- In Phase 3 landen Scheduler-Ergebnisse im Kurzzeit-Buffer und
+  werden vom Dream-Cycle konsolidiert
+- Der Dream-Cycle selbst (Phase 3) ist letztlich ein spezieller
+  Scheduled Task
+
+### Akzeptanzkriterien Phase 2b
+
+1. "Erinner mich in 1 Stunde an Wasser trinken" → Bot sendet pünktlich.
+2. Wiederkehrender Task feuert zuverlässig nach Zeitplan.
+3. `list_scheduled_tasks` zeigt alle anstehenden Tasks.
+4. Tasks überleben Bot-Neustarts (im Vault persistiert).
+5. Tasks sind in Obsidian als Dateien sichtbar und editierbar.
+
+---
+
 ## Phase 3 — Kurzzeitgedächtnis + Dream-Cycle + Inter-Bot-Mailbox
 
 **Ziel:** Das Zwei-Stufen-Modell einführen. Tagsüber landet alles schnell und
