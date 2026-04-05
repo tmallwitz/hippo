@@ -21,4 +21,7 @@ def tmp_vault(tmp_path: Path) -> Path:
     (tmp_path / "short_term" / "processed").mkdir()
     (tmp_path / "inbox").mkdir()
     (tmp_path / "dream_reports").mkdir()
+    (tmp_path / "raw").mkdir()
+    (tmp_path / "raw" / "processed").mkdir()
+    (tmp_path / "personality").mkdir()
     return tmp_path

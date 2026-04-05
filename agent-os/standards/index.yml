@@ -2,15 +2,14 @@
 
 global:
   coding-style:
-    description: Needs description - run /index-standards
+    description: Python naming, formatting, type hints, and DRY principles
   commenting:
-    description: Needs description - run /index-standards
+    description: Docstring style, minimal comments, self-documenting code rules
   conventions:
-    description: Needs description - run /index-standards
+    description: Project structure, dependency management, git workflow, and UV/uv.lock
   error-handling:
-    description: Needs description - run /index-standards
+    description: Exception types, FastAPI HTTPException, structured logging with Structlog
   tech-stack:
-    description: Needs description - run /index-standards
+    description: Full Hippo stack — Claude Agent SDK, aiogram, filesystem storage, uv tooling
   validation:
-    description: Needs description - run /index-standards
-
+    description: Pydantic/FastAPI input validation, fail-early and allowlist patterns
