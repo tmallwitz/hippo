@@ -12,8 +12,10 @@ from hippo.memory.server import create_memory_server
 if TYPE_CHECKING:
     from hippo.config import HippoConfig
     from hippo.memory.buffer import ObsidianBufferStore
+    from hippo.memory.episodic import ObsidianEpisodicStore
     from hippo.memory.mailbox import ObsidianMailboxStore
     from hippo.memory.scheduled import ObsidianScheduledStore
+    from hippo.memory.semantic import ObsidianSemanticStore
 
 SYSTEM_PROMPT = """\
 You are Hippo, a personal assistant with persistent memory. You remember
@@ -155,12 +157,25 @@ def _load_personality_ext(vault_path: Path) -> str:
 
 async def create_agent(
     config: HippoConfig,
-) -> tuple[ClaudeSDKClient, ObsidianScheduledStore, ObsidianBufferStore, ObsidianMailboxStore]:
+) -> tuple[
+    ClaudeSDKClient,
+    ObsidianScheduledStore,
+    ObsidianBufferStore,
+    ObsidianMailboxStore,
+    ObsidianSemanticStore,
+    ObsidianEpisodicStore,
+]:
     """Create a Claude Agent SDK client wired to the memory MCP server.
 
-    Returns (client, scheduled_store, buffer_store, mailbox_store) tuple.
+    Returns (client, scheduled_store, buffer_store, mailbox_store, semantic_store, episodic_store).
     """
-    memory_server, scheduled_store, buffer_store = create_memory_server(
+    (
+        memory_server,
+        scheduled_store,
+        buffer_store,
+        semantic_store,
+        episodic_store,
+    ) = create_memory_server(
         config.hippo_vault_path,
         config.hippo_timezone,
         config.hippo_bot_name,
@@ -180,4 +195,11 @@ async def create_agent(
         model=config.hippo_model,
         cwd=str(config.hippo_vault_path),
     )
-    return ClaudeSDKClient(options=options), scheduled_store, buffer_store, mailbox_store
+    return (
+        ClaudeSDKClient(options=options),
+        scheduled_store,
+        buffer_store,
+        mailbox_store,
+        semantic_store,
+        episodic_store,
+    )
