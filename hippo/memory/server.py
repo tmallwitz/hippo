@@ -445,7 +445,9 @@ def create_memory_server(
     vault_path: Path,
     timezone: str = "UTC",
     bot_name: str = "alice",
-) -> tuple[Any, ObsidianScheduledStore, ObsidianBufferStore, ObsidianSemanticStore, ObsidianEpisodicStore]:  # noqa: E501
+) -> tuple[
+    Any, ObsidianScheduledStore, ObsidianBufferStore, ObsidianSemanticStore, ObsidianEpisodicStore
+]:  # noqa: E501
     """Create the MCP server and return it with the scheduled and buffer stores."""
     global _store, _episodic_store, _scheduled_store, _buffer_store, _mailbox_store, _bot_name
     _bot_name = bot_name
