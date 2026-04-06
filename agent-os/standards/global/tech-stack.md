@@ -63,9 +63,14 @@ when reasonable.
 
 ## Deployment
 
-- **Host:** Headless Linux, self-hosted
-- **Run:** `uv run hippo` (no containerization)
-- **Dream Trigger:** `systemd` timer for scheduled runs, plus manual
-  `/dream` command via Telegram
+- **Host:** Windows 11 Pro, self-hosted
+- **Run:** `uv run hippo <BotName>` — one process per bot, independent
+- **Multi-Bot:** Per-bot env vars with name prefix (e.g. `ALICE_TELEGRAM_BOT_TOKEN`);
+  shared defaults via unprefixed `HIPPO_*` vars; bot names listed in `bots.yaml`
+- **Process Management:** `scripts/start-bots.ps1` reads `bots.yaml` and starts
+  all bots; `scripts/install-tasks.ps1` registers Windows Task Scheduler auto-start
+- **Deployment Wizard:** `scripts/deploy.ps1` — idempotent 9-step interactive setup
+- **Dream Trigger:** manual `/dream` command via Telegram, or automatic when buffer
+  fills (no systemd — scheduler loop runs inside the bot process)
 - **Secrets:** `.env` file, never committed
-- **Logs:** stdout/stderr, captured by systemd or the runner's choice
+- **Logs:** `logs/<BotName>.log` with daily rotation via `TimedRotatingFileHandler`

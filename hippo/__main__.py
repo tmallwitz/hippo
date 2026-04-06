@@ -1,10 +1,16 @@
-"""Entry point for `uv run hippo`."""
+"""Entry point for `uv run hippo <BotName>`."""
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import logging
+import logging.handlers
+import re
 import sys
+from pathlib import Path
+
+_BOT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,19 +19,55 @@ logging.basicConfig(
 log = logging.getLogger("hippo")
 
 
+def _parse_args() -> str:
+    parser = argparse.ArgumentParser(
+        prog="hippo",
+        description="Start a Hippo bot. Each bot runs as an independent process.",
+    )
+    parser.add_argument(
+        "bot_name",
+        help=(
+            "Name of the bot to start (e.g., Alice). "
+            "Must match a config block in .env (e.g., ALICE_TELEGRAM_BOT_TOKEN)."
+        ),
+    )
+    args = parser.parse_args()
+    if not _BOT_NAME_RE.match(args.bot_name):
+        parser.error(
+            f"Invalid bot name {args.bot_name!r}. "
+            "Must start with a letter and contain only letters, digits, and underscores."
+        )
+    return str(args.bot_name)
+
+
+def _add_file_handler(bot_name: str) -> None:
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    handler = logging.handlers.TimedRotatingFileHandler(
+        logs_dir / f"{bot_name}.log",
+        when="midnight",
+        backupCount=30,
+        encoding="utf-8",
+    )
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s"))
+    logging.getLogger().addHandler(handler)
+
+
 def main() -> None:
     """Start the Hippo bot."""
+    bot_name = _parse_args()
+    _add_file_handler(bot_name)
     try:
-        asyncio.run(_async_main())
+        asyncio.run(_async_main(bot_name))
     except KeyboardInterrupt:
         log.info("Shutting down.")
 
 
-async def _async_main() -> None:
+async def _async_main(bot_name: str) -> None:
     from hippo.config import get_config
 
     try:
-        config = get_config()
+        config = get_config(bot_name)
     except Exception as exc:
         log.error("Failed to load config: %s", exc)
         sys.exit(1)
