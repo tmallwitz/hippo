@@ -324,7 +324,7 @@ quick-access commands for common operations.
 
 ## Phase 6: Memory Intelligence
 
-**Status:** Planned
+**Status:** Done
 
 Replace substring matching with embedding-based retrieval and add
 automatic compression of the episodic memory layer.

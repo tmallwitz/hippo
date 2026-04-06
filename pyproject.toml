@@ -15,6 +15,7 @@ dependencies = [
     "tzdata>=2026.1",
     "pyyaml>=6.0",
     "openai-whisper>=20231117",
+    "sentence-transformers>=2.0",
 ]
 
 [project.scripts]
@@ -43,7 +44,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["frontmatter", "claude_agent_sdk", "telegramify_markdown", "telegramify_markdown.config", "croniter", "yaml", "whisper"]
+module = ["frontmatter", "claude_agent_sdk", "telegramify_markdown", "telegramify_markdown.config", "croniter", "yaml", "whisper", "sentence_transformers"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

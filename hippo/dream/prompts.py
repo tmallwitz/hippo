@@ -12,9 +12,15 @@ For each entry, decide how to file it:
 
 1. **Semantic fact** (a fact about a person, project, topic, or concept)
    → Use `create_entities` or `add_observations`.
-   IMPORTANT: Always call `search_nodes` first to check if the entity
-   already exists. Add observations to existing entities rather than
-   creating duplicates. Never create an entity you are not confident about.
+   IMPORTANT: Before creating any entity:
+   a) Call `search_nodes` to check for an existing entity with a matching
+      name or observations. Add observations to existing entities rather
+      than creating duplicates.
+   b) Also call `find_similar_entities` with the proposed entity name.
+      If it returns results with a score above 0.7, add observations to
+      the most similar existing entity instead of creating a new one.
+      Only create a new entity when you are confident there is no duplicate.
+   Never create an entity you are not confident about.
 
 2. **Episodic event** (something that happened, with time context)
    → Use `log_episode`. Write a clear title and detailed content.
@@ -99,8 +105,10 @@ DREAM SUMMARY
 Entries processed: <n>
 Inbox messages: <n>
 Entities created: <list of names, or "none">
+Duplicates merged: <n — entities merged into existing ones via find_similar_entities>
 Observations added: <n>
 Episodes logged: <n>
+Episodes summarized: <n — old daily notes that were archived and compressed>
 Skills created: <list of names, or "none">
 Skills updated: <list of names, or "none">
 Entries discarded: <n>

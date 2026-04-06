@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import frontmatter
@@ -218,3 +218,104 @@ class TestManualEditsAndRoundtrip:
         assert ep.tags == ("test", "roundtrip")
         assert ep.date == "2026-04-05"
         assert ep.time == "15:00"
+
+
+# ---------------------------------------------------------------------------
+# Episodic archival (Phase 6)
+# ---------------------------------------------------------------------------
+
+
+def _write_old_note(vault: Path, days_old: int, content: str) -> tuple[str, Path]:
+    """Write a daily note dated `days_old` days ago with given content."""
+    note_date = (date.today() - timedelta(days=days_old)).isoformat()
+    path = vault / "episodic" / f"{note_date}.md"
+    path.write_text(content, encoding="utf-8")
+    return note_date, path
+
+
+class TestFindArchivableNotes:
+    async def test_empty_when_no_notes(self, store: ObsidianEpisodicStore) -> None:
+        result = await store.find_archivable_notes(max_age_days=30, min_size_chars=100)
+        assert result == []
+
+    async def test_returns_old_large_note(
+        self, store: ObsidianEpisodicStore, tmp_vault: Path
+    ) -> None:
+        date_str, _ = _write_old_note(tmp_vault, days_old=45, content="x" * 3000)
+        result = await store.find_archivable_notes(max_age_days=30, min_size_chars=2000)
+        assert len(result) == 1
+        assert result[0][0] == date_str
+
+    async def test_skips_recent_note(self, store: ObsidianEpisodicStore, tmp_vault: Path) -> None:
+        _write_old_note(tmp_vault, days_old=10, content="x" * 3000)
+        result = await store.find_archivable_notes(max_age_days=30, min_size_chars=2000)
+        assert result == []
+
+    async def test_skips_small_note(self, store: ObsidianEpisodicStore, tmp_vault: Path) -> None:
+        _write_old_note(tmp_vault, days_old=45, content="small note")
+        result = await store.find_archivable_notes(max_age_days=30, min_size_chars=2000)
+        assert result == []
+
+    async def test_sorted_by_date(self, store: ObsidianEpisodicStore, tmp_vault: Path) -> None:
+        date1, _ = _write_old_note(tmp_vault, days_old=60, content="x" * 3000)
+        date2, _ = _write_old_note(tmp_vault, days_old=45, content="x" * 3000)
+        result = await store.find_archivable_notes(max_age_days=30, min_size_chars=2000)
+        assert len(result) == 2
+        assert result[0][0] == date1  # older first
+        assert result[1][0] == date2
+
+    async def test_skips_non_date_filenames(
+        self, store: ObsidianEpisodicStore, tmp_vault: Path
+    ) -> None:
+        (tmp_vault / "episodic" / "index.md").write_text("x" * 3000, encoding="utf-8")
+        result = await store.find_archivable_notes(max_age_days=30, min_size_chars=100)
+        assert result == []
+
+
+class TestArchiveDailyNote:
+    async def test_moves_original_to_archive(
+        self, store: ObsidianEpisodicStore, tmp_vault: Path
+    ) -> None:
+        date_str, _original_path = _write_old_note(tmp_vault, days_old=45, content="original text")
+        await store.archive_daily_note(date_str, "condensed summary")
+        archive_path = tmp_vault / "episodic" / "archive" / f"{date_str}.md"
+        assert archive_path.exists()
+        assert "original text" in archive_path.read_text(encoding="utf-8")
+
+    async def test_writes_summary_as_new_note(
+        self, store: ObsidianEpisodicStore, tmp_vault: Path
+    ) -> None:
+        date_str, _ = _write_old_note(tmp_vault, days_old=45, content="original text")
+        await store.archive_daily_note(date_str, "condensed summary")
+        active_path = tmp_vault / "episodic" / f"{date_str}.md"
+        assert active_path.exists()
+        content = active_path.read_text(encoding="utf-8")
+        assert "condensed summary" in content
+        assert "original text" not in content
+
+    async def test_noop_for_missing_note(
+        self, store: ObsidianEpisodicStore, tmp_vault: Path
+    ) -> None:
+        await store.archive_daily_note("1990-01-01", "summary")
+        archive_dir = tmp_vault / "episodic" / "archive"
+        assert not (archive_dir / "1990-01-01.md").exists()
+
+    async def test_archived_note_returns_summary(
+        self, store: ObsidianEpisodicStore, tmp_vault: Path
+    ) -> None:
+        """After archival, recall_episodes returns the summary, not the original."""
+        date_str, _ = _write_old_note(
+            tmp_vault,
+            days_old=45,
+            content=(
+                f"---\ndate: {(date.today() - timedelta(days=45)).isoformat()}\n"
+                "episodes: 1\n---\n\n"
+                f"# {(date.today() - timedelta(days=45)).isoformat()}\n\n"
+                f"## 10:00 — Old episode\nOriginal detailed content\n"
+            ),
+        )
+        await store.archive_daily_note(date_str, "A short summary of that day")
+        active_path = tmp_vault / "episodic" / f"{date_str}.md"
+        text = active_path.read_text(encoding="utf-8")
+        assert "A short summary of that day" in text
+        assert "Original detailed content" not in text

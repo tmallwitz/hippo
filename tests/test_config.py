@@ -90,3 +90,28 @@ class TestConfigParsing:
             **_NO_ENV,
         )
         assert config.hippo_dream_model == "claude-haiku-4-5-20251001"
+
+    def test_phase6_defaults(self, tmp_path: Path) -> None:
+        config = HippoConfig(
+            telegram_bot_token="123:ABC",
+            allowed_telegram_ids="111",
+            hippo_vault_path=str(tmp_path),
+            **_NO_ENV,
+        )
+        assert config.hippo_embedding_model == "all-MiniLM-L6-v2"
+        assert config.hippo_search_threshold == 0.4
+        assert config.hippo_episodic_archive_days == 30
+
+    def test_phase6_overrides(self, tmp_path: Path) -> None:
+        config = HippoConfig(
+            telegram_bot_token="123:ABC",
+            allowed_telegram_ids="111",
+            hippo_vault_path=str(tmp_path),
+            hippo_embedding_model="",
+            hippo_search_threshold=0.6,
+            hippo_episodic_archive_days=90,
+            **_NO_ENV,
+        )
+        assert config.hippo_embedding_model == ""
+        assert config.hippo_search_threshold == 0.6
+        assert config.hippo_episodic_archive_days == 90
