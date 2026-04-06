@@ -238,6 +238,28 @@ def _last_dream_date(vault_path: object) -> str:
     return files[0].stem  # YYYY-MM-DD
 
 
+def _count_raw_files(vault_path: object) -> int:
+    """Count unprocessed files in ``raw/`` (excluding ``raw/processed/``)."""
+    from pathlib import Path
+
+    raw_dir = Path(str(vault_path)) / "raw"
+    if not raw_dir.is_dir():
+        return 0
+    processed_dir = raw_dir / "processed"
+    count = 0
+    for path in raw_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            path.relative_to(processed_dir)
+            continue  # inside processed/ — skip
+        except ValueError:
+            pass
+        if path.suffix.lower() in {".md", ".txt", ".markdown"}:
+            count += 1
+    return count
+
+
 # ---------------------------------------------------------------------------
 # Bot setup
 # ---------------------------------------------------------------------------
@@ -278,7 +300,7 @@ async def run_bot(
         stop_typing = asyncio.Event()
         typing_task = asyncio.create_task(_keep_typing(bot, chat_id, stop_typing))
         try:
-            report = await run_dream(config, buffer_store, mailbox_store)
+            report = await run_dream(config, buffer_store, mailbox_store, episodic_store)
         except Exception as exc:
             log.exception("Dream cycle failed")
             report = f"Dream cycle failed: {exc}"
@@ -296,6 +318,11 @@ async def run_bot(
         max_entries = config.hippo_buffer_max_entries
         last_dream = _last_dream_date(config.hippo_vault_path)
 
+        inbox_messages = await mailbox_store.read_inbox()
+        inbox_count = len(inbox_messages)
+
+        raw_count = await asyncio.to_thread(_count_raw_files, config.hippo_vault_path)
+
         tasks = await scheduled_store.list_tasks()
         pending = [t for t in tasks if t.status in ("pending", "active")]
         if pending:
@@ -312,6 +339,8 @@ async def run_bot(
         lines = [
             "**Status**",
             f"Buffer: {entry_count}/{max_entries} entries",
+            f"Inbox: {inbox_count} message{'s' if inbox_count != 1 else ''} waiting",
+            f"Raw: {raw_count} file{'s' if raw_count != 1 else ''} waiting for ingest",
             f"Last dream: {last_dream}",
             f"Next task: {next_task}",
         ]

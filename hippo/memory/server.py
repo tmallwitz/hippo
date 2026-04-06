@@ -213,6 +213,25 @@ async def open_nodes(args: dict[str, Any]) -> dict[str, Any]:
     return _json_result(_graph_to_dict(graph))
 
 
+@tool(
+    "find_similar_entities",
+    "Find entities with names similar to the given name using semantic embeddings. "
+    "Use this before create_entities to detect near-duplicates. "
+    "Returns an empty list if embeddings are not configured.",
+    {
+        "name": str,
+        "threshold": float,
+    },
+)
+async def find_similar_entities(args: dict[str, Any]) -> dict[str, Any]:
+    threshold = float(args.get("threshold") or 0.7)
+    results = await _get_store().find_similar_entities(args["name"], threshold)
+    if not results:
+        return _text("No similar entities found.")
+    lines = [f"- {name} (score: {score:.3f})" for name, score in results]
+    return _text("Similar entities:\n" + "\n".join(lines))
+
+
 # ---------------------------------------------------------------------------
 # Episodic tools
 # ---------------------------------------------------------------------------
@@ -445,13 +464,19 @@ def create_memory_server(
     vault_path: Path,
     timezone: str = "UTC",
     bot_name: str = "alice",
+    embedding_model: str | None = None,
+    search_threshold: float = 0.4,
 ) -> tuple[
     Any, ObsidianScheduledStore, ObsidianBufferStore, ObsidianSemanticStore, ObsidianEpisodicStore
-]:  # noqa: E501
+]:
     """Create the MCP server and return it with the scheduled and buffer stores."""
     global _store, _episodic_store, _scheduled_store, _buffer_store, _mailbox_store, _bot_name
     _bot_name = bot_name
-    _store = ObsidianSemanticStore(vault_path)
+    _store = ObsidianSemanticStore(
+        vault_path,
+        embedding_model=embedding_model,
+        search_threshold=search_threshold,
+    )
     _episodic_store = ObsidianEpisodicStore(vault_path)
     _scheduled_store = ObsidianScheduledStore(vault_path, timezone)
     _buffer_store = ObsidianBufferStore(vault_path)
@@ -506,5 +531,6 @@ def create_dream_server() -> Any:
             log_episode,
             recall_episodes,
             read_inbox,
+            find_similar_entities,
         ],
     )

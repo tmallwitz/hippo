@@ -73,7 +73,14 @@ async def _async_main() -> None:
                 episodic_store,
             ),
             run_scheduler(
-                config, client, client_lock, bot, scheduled_store, buffer_store, mailbox_store
+                config,
+                client,
+                client_lock,
+                bot,
+                scheduled_store,
+                buffer_store,
+                mailbox_store,
+                episodic_store,
             ),
         )
 

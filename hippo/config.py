@@ -24,6 +24,10 @@ class HippoConfig(BaseSettings):
     hippo_buffer_max_entries: int = 50
     hippo_whisper_model: str = "base"
     hippo_whisper_language: str | None = None  # e.g. "de", "en" — None = auto-detect
+    hippo_embedding_model: str = "all-MiniLM-L6-v2"
+    hippo_search_threshold: float = 0.4
+    hippo_episodic_archive_days: int = 30
+    hippo_retention_days: int = 90
 
     @field_validator("allowed_telegram_ids", mode="before")
     @classmethod

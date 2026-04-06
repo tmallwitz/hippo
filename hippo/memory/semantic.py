@@ -7,6 +7,7 @@ import logging
 import re
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import frontmatter
 
@@ -192,9 +193,16 @@ def _get_created_date(path: Path) -> date | None:
 class ObsidianSemanticStore:
     """Knowledge-graph memory backed by Markdown files in an Obsidian vault."""
 
-    def __init__(self, vault_path: Path) -> None:
+    def __init__(
+        self,
+        vault_path: Path,
+        embedding_model: str | None = None,
+        search_threshold: float = 0.4,
+    ) -> None:
         self._vault = vault_path
         self._lock = asyncio.Lock()
+        self._embedding_model = embedding_model or None
+        self._search_threshold = search_threshold
 
     # -- Create ---------------------------------------------------------------
 
@@ -211,6 +219,13 @@ class ObsidianSemanticStore:
             path = _entity_path(self._vault, entity.entity_type, entity.name)
             _write_entity_file(path, entity, [])
             created.append(entity)
+        if created and self._embedding_model:
+            try:
+                from hippo.memory.embeddings import update_entity_embeddings
+
+                update_entity_embeddings(self._vault, created, self._embedding_model)
+            except Exception:
+                log.warning("Failed to update embeddings after entity creation", exc_info=True)
         return created
 
     async def create_relations(self, relations: list[Relation]) -> list[Relation]:
@@ -265,6 +280,13 @@ class ObsidianSemanticStore:
             observations=(*entity.observations, *added),
         )
         _write_entity_file(path, updated, rels, created=created_date)
+        if self._embedding_model:
+            try:
+                from hippo.memory.embeddings import update_entity_embeddings
+
+                update_entity_embeddings(self._vault, [updated], self._embedding_model)
+            except Exception:
+                log.warning("Failed to update embeddings after observation update", exc_info=True)
         return added
 
     # -- Delete ---------------------------------------------------------------
@@ -285,6 +307,22 @@ class ObsidianSemanticStore:
 
         if not deleted_names:
             return
+
+        if self._embedding_model:
+            try:
+                from hippo.memory.embeddings import load_embeddings, save_embeddings
+
+                data = load_embeddings(self._vault)
+                stored: dict[str, Any] = data.get("entities", {})
+                changed = False
+                for name in deleted_names:
+                    if name in stored:
+                        del stored[name]
+                        changed = True
+                if changed:
+                    save_embeddings(self._vault, data)
+            except Exception:
+                log.warning("Failed to remove embeddings for deleted entities", exc_info=True)
 
         # Clean up inbound relations pointing to deleted entities
         semantic_dir = self._vault / "semantic"
@@ -361,17 +399,37 @@ class ObsidianSemanticStore:
 
     def _search_nodes_sync(self, query: str) -> KnowledgeGraph:
         all_entities, all_relations = _load_all(self._vault)
-        q = query.lower()
 
-        matched = [
-            e
-            for e in all_entities
-            if q in e.name.lower()
-            or q in e.entity_type.lower()
-            or any(q in obs.lower() for obs in e.observations)
-        ]
+        matched: list[Entity] = []
+
+        if self._embedding_model:
+            try:
+                from hippo.memory.embeddings import search_by_embedding
+
+                hits = search_by_embedding(
+                    query, self._vault, self._embedding_model, self._search_threshold
+                )
+                if hits:
+                    hit_names = {name for name, _ in hits}
+                    matched = [e for e in all_entities if e.name in hit_names]
+            except Exception:
+                log.warning(
+                    "Embedding search failed, falling back to substring: %s",
+                    query,
+                    exc_info=True,
+                )
+
+        if not matched:
+            q = query.lower()
+            matched = [
+                e
+                for e in all_entities
+                if q in e.name.lower()
+                or q in e.entity_type.lower()
+                or any(q in obs.lower() for obs in e.observations)
+            ]
+
         matched_names = {e.name for e in matched}
-
         filtered_rels = [
             r
             for r in all_relations
@@ -381,6 +439,27 @@ class ObsidianSemanticStore:
             entities=tuple(matched),
             relations=tuple(filtered_rels),
         )
+
+    async def find_similar_entities(
+        self, name: str, threshold: float = 0.7
+    ) -> list[tuple[str, float]]:
+        """Find entities with names similar to ``name`` using embeddings.
+
+        Returns list of (entity_name, score) sorted by score descending.
+        Returns empty list if embedding model is not configured.
+        """
+        if not self._embedding_model:
+            return []
+        try:
+            return await asyncio.to_thread(self._find_similar_entities_sync, name, threshold)
+        except Exception:
+            log.warning("find_similar_entities failed for '%s'", name, exc_info=True)
+            return []
+
+    def _find_similar_entities_sync(self, name: str, threshold: float) -> list[tuple[str, float]]:
+        from hippo.memory.embeddings import find_similar_names
+
+        return find_similar_names(name, self._vault, self._embedding_model, threshold)  # type: ignore[arg-type]
 
     async def open_nodes(self, names: list[str]) -> KnowledgeGraph:
         return await asyncio.to_thread(self._open_nodes_sync, names)

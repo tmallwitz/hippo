@@ -120,7 +120,7 @@ class ObsidianMailboxStore:
     def _read_inbox_sync(self) -> tuple[MailboxMessage, ...]:
         inbox = self._inbox_path()
         messages: list[MailboxMessage] = []
-        for path in sorted(inbox.glob("*.md")):
+        for path in sorted(inbox.rglob("*.md")):
             try:
                 post = frontmatter.load(str(path))
                 messages.append(
@@ -142,7 +142,7 @@ class ObsidianMailboxStore:
     def _clear_inbox_sync(self) -> int:
         inbox = self._inbox_path()
         count = 0
-        for path in inbox.glob("*.md"):
+        for path in inbox.rglob("*.md"):
             path.unlink()
             count += 1
         return count

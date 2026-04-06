@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from hippo.config import HippoConfig
     from hippo.memory.buffer import ObsidianBufferStore
+    from hippo.memory.episodic import ObsidianEpisodicStore
     from hippo.memory.mailbox import ObsidianMailboxStore
     from hippo.memory.scheduled import ObsidianScheduledStore
     from hippo.memory.types import ScheduledTask
@@ -31,6 +32,7 @@ async def run_scheduler(
     store: ObsidianScheduledStore,
     buffer_store: ObsidianBufferStore,
     mailbox_store: ObsidianMailboxStore,
+    episodic_store: ObsidianEpisodicStore | None = None,
     *,
     interval: float = _DEFAULT_INTERVAL,
 ) -> None:
@@ -53,7 +55,7 @@ async def run_scheduler(
             log.exception("Scheduler tick failed")
 
         try:
-            await _maybe_trigger_dream(config, buffer_store, mailbox_store, bot)
+            await _maybe_trigger_dream(config, buffer_store, mailbox_store, bot, episodic_store)
         except Exception:
             log.exception("Buffer check failed")
 
@@ -65,6 +67,7 @@ async def _maybe_trigger_dream(
     buffer_store: ObsidianBufferStore,
     mailbox_store: ObsidianMailboxStore,
     bot: Bot,
+    episodic_store: ObsidianEpisodicStore | None = None,
 ) -> None:
     """Trigger the dream cycle automatically if the buffer is full."""
     from hippo.dream.runner import _dream_running, run_dream
@@ -84,7 +87,7 @@ async def _maybe_trigger_dream(
 
     from hippo.telegram_bridge import convert_to_telegram
 
-    report = await run_dream(config, buffer_store, mailbox_store)
+    report = await run_dream(config, buffer_store, mailbox_store, episodic_store)
 
     for user_id in config.allowed_telegram_ids:
         await bot.send_message(chat_id=user_id, text="💤 Dream cycle (auto)")

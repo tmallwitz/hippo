@@ -179,6 +179,8 @@ async def create_agent(
         config.hippo_vault_path,
         config.hippo_timezone,
         config.hippo_bot_name,
+        embedding_model=config.hippo_embedding_model or None,
+        search_threshold=config.hippo_search_threshold,
     )
 
     from hippo.memory.mailbox import ObsidianMailboxStore as _MailboxStore
