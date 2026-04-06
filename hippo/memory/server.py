@@ -23,6 +23,7 @@ _scheduled_store: ObsidianScheduledStore | None = None
 _buffer_store: ObsidianBufferStore | None = None
 _mailbox_store: ObsidianMailboxStore | None = None
 _bot_name: str = "alice"
+_project_root: Path | None = None
 
 
 def _get_store() -> ObsidianSemanticStore:
@@ -391,7 +392,7 @@ async def remember(args: dict[str, Any]) -> dict[str, Any]:
 )
 async def send_message(args: dict[str, Any]) -> dict[str, Any]:
     target_name = args["bot_name"]
-    registry = load_bot_registry(Path.cwd())
+    registry = load_bot_registry(_project_root or Path.cwd())
     if target_name not in registry:
         return _text(
             f"Bot '{target_name}' not found in bots.yaml. Available: {list(registry.keys())}"
@@ -466,12 +467,15 @@ def create_memory_server(
     bot_name: str = "alice",
     embedding_model: str | None = None,
     search_threshold: float = 0.4,
+    project_root: Path | None = None,
 ) -> tuple[
     Any, ObsidianScheduledStore, ObsidianBufferStore, ObsidianSemanticStore, ObsidianEpisodicStore
 ]:
     """Create the MCP server and return it with the scheduled and buffer stores."""
-    global _store, _episodic_store, _scheduled_store, _buffer_store, _mailbox_store, _bot_name
+    global _store, _episodic_store, _scheduled_store, _buffer_store
+    global _mailbox_store, _bot_name, _project_root
     _bot_name = bot_name
+    _project_root = project_root
     _store = ObsidianSemanticStore(
         vault_path,
         embedding_model=embedding_model,

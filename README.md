@@ -4,7 +4,7 @@
 > brain, Telegram as mouth, and a nightly dream cycle that consolidates
 > short-term impressions into long-term knowledge and self-written skills.
 
-**Status:** Early development. Phase 1 in progress. Expect breaking changes.
+**Status:** Phase 7 (Multi-Bot Deployment) complete. All planned phases done.
 
 ## What it is
 
@@ -21,44 +21,107 @@ A nightly **dream cycle** runs as a sub-agent, consolidating the short-term
 buffer into the appropriate long-term layers, and can even write new skills
 autonomously when it detects recurring patterns.
 
+One installation can run **multiple independent bots** simultaneously — each
+with its own vault, Telegram token, and dream cycle.
+
 The name comes from the **hippocampus**, the brain region that performs
 memory consolidation during sleep in mammals.
 
-## What it isn't (yet)
+## What it isn't
 
 - Production-ready. This is an experimentation platform.
 - A general-purpose framework. It's built for a specific setup
   (one user per bot, local deployment, Claude Pro OAuth).
-- Finished. See [PLAN.md](./PLAN.md) for the phased roadmap.
 
 ## Getting started
 
 ### Prerequisites
 
+- Windows 11 Pro (recommended) or Linux
 - Python 3.12+
 - [`uv`](https://docs.astral.sh/uv/) package manager
 - A Telegram bot token from [@BotFather](https://t.me/BotFather)
 - Claude Code CLI authenticated (`claude login`)
 - An Obsidian vault directory (or any empty directory)
 
-### Setup
+### Quick setup (Windows)
+
+Run the interactive deployment wizard for a guided setup:
+
+```powershell
+.\scripts\deploy.ps1
+```
+
+The wizard checks prerequisites, installs dependencies, configures your bots,
+scaffolds vault directories, runs a smoke test, and optionally registers
+auto-start Task Scheduler tasks — all in one go.
+
+### Manual setup
 
 ```bash
 git clone https://github.com/tmallwitz/hippo.git
 cd hippo
 cp .env.example .env
-# Edit .env with your Telegram token, user ID, and vault path
+# Edit .env with your bot config (see .env.example for the format)
 uv sync
 ```
 
 ### Run
 
+Each bot runs as an independent process. Pass the bot name as the first argument:
+
 ```bash
-uv run hippo
+uv run hippo Alice
 ```
 
-The bot will connect to Telegram and start responding to whitelisted users.
-Tell it facts and it will store them as Markdown files in your vault.
+To run multiple bots simultaneously, open separate terminals:
+
+```bash
+# Terminal 1
+uv run hippo Alice
+
+# Terminal 2
+uv run hippo Bob
+```
+
+Or start all bots at once with the launcher script:
+
+```powershell
+.\scripts\start-bots.ps1
+```
+
+### Multi-bot configuration
+
+Per-bot config in `.env` uses the bot name as a prefix (uppercased):
+
+```ini
+# Shared settings (apply to all bots)
+HIPPO_MODEL=claude-sonnet-4-5
+HIPPO_TIMEZONE=Europe/Berlin
+
+# Bot: Alice
+ALICE_TELEGRAM_BOT_TOKEN=<token from @BotFather>
+ALICE_ALLOWED_TELEGRAM_IDS=123456
+ALICE_HIPPO_VAULT_PATH=C:/Users/you/vaults/alice
+
+# Bot: Bob
+BOB_TELEGRAM_BOT_TOKEN=<different token>
+BOB_ALLOWED_TELEGRAM_IDS=123456
+BOB_HIPPO_VAULT_PATH=C:/Users/you/vaults/bob
+```
+
+Per-bot overrides (e.g. `ALICE_HIPPO_MODEL`) take precedence over shared defaults.
+
+**Backward compatibility:** unprefixed single-bot vars (`TELEGRAM_BOT_TOKEN`,
+`HIPPO_VAULT_PATH`, etc.) still work as the fallback layer.
+
+### Auto-start on login
+
+```powershell
+.\scripts\install-tasks.ps1
+```
+
+Creates a Windows Task Scheduler task for each bot in `bots.yaml`.
 
 ### Test
 
@@ -70,10 +133,10 @@ uv run mypy hippo/
 
 ## Architecture
 
-See [PLAN.md](./PLAN.md) for the original design document and the
-three-phase development vision. Day-to-day development uses
-[Agent OS](https://buildermethods.com/agent-os) for spec-driven workflow
-and standards management; specs and standards live under `agent-os/`.
+See [PLAN.md](./PLAN.md) for the original design document.
+Day-to-day development uses [Agent OS](https://buildermethods.com/agent-os)
+for spec-driven workflow and standards management; specs and standards live
+under `agent-os/`.
 
 ## Inspired by
 

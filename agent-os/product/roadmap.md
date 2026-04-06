@@ -363,7 +363,7 @@ automatic compression of the episodic memory layer.
 
 ## Phase 7: Multi-Bot Deployment
 
-**Status:** Planned
+**Status:** Done
 
 Make one Hippo installation host multiple named bots simultaneously, and
 provide a guided deployment wizard for Windows 11 Pro so the whole setup

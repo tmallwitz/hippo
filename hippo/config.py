@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-import functools
+import re
 from pathlib import Path
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+)
+
+_BOT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
 class HippoConfig(BaseSettings):
@@ -55,7 +62,54 @@ class HippoConfig(BaseSettings):
         return resolved
 
 
-@functools.lru_cache(maxsize=1)
-def get_config() -> HippoConfig:
-    """Load and cache the configuration singleton."""
-    return HippoConfig()  # type: ignore[call-arg]
+def get_config(
+    bot_name: str,
+    _env_file: str | Path | None = ".env",
+) -> HippoConfig:
+    """Load configuration for the named bot.
+
+    Env vars are resolved in priority order:
+    1. ``{BOT_NAME}_*`` prefixed vars (per-bot overrides, e.g. ``ALICE_TELEGRAM_BOT_TOKEN``)
+    2. Unprefixed vars (shared defaults / single-bot backward compatibility)
+
+    Common settings like ``HIPPO_MODEL`` and ``HIPPO_TIMEZONE`` are read from the
+    unprefixed fallback and can be overridden per-bot (e.g. ``ALICE_HIPPO_MODEL``).
+
+    The ``_env_file`` parameter is intended for tests; pass ``None`` to skip
+    reading the ``.env`` file entirely.
+    """
+    if not _BOT_NAME_RE.match(bot_name):
+        msg = (
+            f"Invalid bot name {bot_name!r}. "
+            "Bot names must start with a letter and contain only "
+            "letters, digits, and underscores."
+        )
+        raise ValueError(msg)
+
+    prefix = f"{bot_name.upper()}_"
+    env_file = _env_file
+
+    class _BotConfig(HippoConfig):
+        @classmethod
+        def settings_customise_sources(
+            cls,
+            settings_cls: type[BaseSettings],
+            init_settings: PydanticBaseSettingsSource,
+            env_settings: PydanticBaseSettingsSource,
+            dotenv_settings: PydanticBaseSettingsSource,
+            file_secret_settings: PydanticBaseSettingsSource,
+        ) -> tuple[PydanticBaseSettingsSource, ...]:
+            sources: tuple[PydanticBaseSettingsSource, ...] = (
+                init_settings,
+                EnvSettingsSource(settings_cls, env_prefix=prefix),
+                EnvSettingsSource(settings_cls, env_prefix=""),
+            )
+            if env_file is not None:
+                sources += (
+                    DotEnvSettingsSource(settings_cls, env_file=env_file, env_prefix=prefix),
+                    DotEnvSettingsSource(settings_cls, env_file=env_file, env_prefix=""),
+                )
+            sources += (file_secret_settings,)
+            return sources
+
+    return _BotConfig(hippo_bot_name=bot_name)  # type: ignore[call-arg]
