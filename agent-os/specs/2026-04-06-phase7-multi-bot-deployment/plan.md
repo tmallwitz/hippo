@@ -97,3 +97,25 @@ Multi-bot config tests with `monkeypatch.setenv`; CLI arg validation tests.
 4. Check `logs/Alice.log` and `logs/Bob.log` exist
 5. Run `scripts/start-bots.ps1`
 6. Run `scripts/deploy.ps1` step-by-step
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Task 2: HippoConfig pydantic-settings two-layer env resolution
+- Task 3: argparse CLI, bot name regex validation, TimedRotatingFileHandler
+- Task 4: project_root fix for send_message in server.py
+- Task 5: .env.example restructured with shared + per-bot sections
+- Task 6: all three PowerShell scripts created as specified
+- Task 7: test_config.py extended, test_main.py created
+- Task 8: README.md, tech-stack.md, roadmap.md updated
+
+### What was built differently
+- Nothing: spec was written retrospectively; plan reflects actual implementation.
+
+### What was added beyond the plan
+- Nothing notable.
+
+### What was not built
+- Nothing: all tasks complete.

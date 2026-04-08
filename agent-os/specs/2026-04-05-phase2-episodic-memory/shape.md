@@ -31,3 +31,30 @@ No delete/update tools — editing happens manually in Obsidian.
 ## Standards Applied
 
 - All six global standards (same as Phase 1)
+
+## Implementation Base
+
+base_commit: dca03f0deb735a8b3e055d78cf4216014c37c485
+captured_at: 2026-04-08T00:00:00Z
+captured_by: finish-spec (legacy fallback)
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Episode Pydantic model added to types.py
+- EpisodicStore protocol added to store.py
+- ObsidianEpisodicStore implemented in new episodic.py (daily notes, H2 sections, tag parsing)
+- 2 MCP tools (log_episode, recall_episodes) wired into server.py
+- System prompt extended in agent.py with verbose episodic logging instructions
+- ~15 tests in new test_episodic.py
+
+### What was built differently
+- Nothing: spec was written retrospectively; plan reflects actual implementation.
+
+### What was added beyond the plan
+- Nothing notable beyond spec documentation files.
+
+### What was not built
+- Nothing: all deliverables complete.

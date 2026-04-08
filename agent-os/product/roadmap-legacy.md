@@ -1,3 +1,13 @@
+<!--
+This file was the original roadmap.md before /migrate-product ran on
+2026-04-08. It is preserved for reference but is no longer read by any
+Agent OS command.
+
+The current roadmap lives in agent-os/product/milestones/.
+
+See /help-flow for the current workflow.
+-->
+
 # Product Roadmap
 
 Hippo is built in phases. Each phase produces a usable system;

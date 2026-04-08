@@ -134,9 +134,13 @@ uv run mypy hippo/
 ## Architecture
 
 See [PLAN.md](./PLAN.md) for the original design document.
-Day-to-day development uses [Agent OS](https://buildermethods.com/agent-os)
-for spec-driven workflow and standards management; specs and standards live
-under `agent-os/`.
+Day-to-day development uses an edited version of
+[Agent OS](https://buildermethods.com/agent-os) for spec-driven workflow and
+standards management. The local variant adds iterative milestones (replacing the
+upstream flat roadmap), a `/migrate-product` command for one-time layout
+conversion, and a `/finish-spec` flow that reconciles plans against git history
+and promotes reusable patterns to standards. Specs and standards live under
+`agent-os/`.
 
 ## Inspired by
 

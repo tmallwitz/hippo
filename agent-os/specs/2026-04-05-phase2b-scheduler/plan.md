@@ -19,3 +19,26 @@
 3. list_scheduled_tasks shows upcoming tasks
 4. Tasks survive bot restarts (persisted in vault)
 5. Tasks visible and editable in Obsidian
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- ScheduledTask model in types.py
+- ObsidianScheduledStore in scheduled.py (246 lines, one-file-per-task)
+- 3 MCP tools in server.py (schedule_task, list_scheduled_tasks, cancel_scheduled_task)
+- Background scheduler loop in scheduler.py (30s interval)
+- telegram_bridge.py: query_agent + convert_to_telegram made public, lock param
+- __main__.py: asyncio.gather for concurrent bot + scheduler
+- System prompt scheduling section with timezone placeholder
+- HIPPO_TIMEZONE config, test_scheduled.py (221 lines)
+
+### What was built differently
+- Nothing.
+
+### What was added beyond the plan
+- Nothing notable.
+
+### What was not built
+- Nothing.

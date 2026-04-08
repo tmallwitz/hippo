@@ -27,3 +27,31 @@ Extend `hippo/telegram_bridge.py` (and add `hippo/voice.py`) to handle:
 - `global/coding-style` — type hints, async/await, small focused functions
 - `global/tech-stack` — aiogram v3 patterns, uv for deps, no pip
 - `global/conventions` — Conventional Commits, feature branch, squash merge
+
+## Implementation Base
+
+base_commit: 68e84ebaa7932d4341e999c1e387c985bca8a990
+captured_at: 2026-04-08T00:00:00Z
+captured_by: finish-spec (legacy fallback)
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Voice transcription via local openai-whisper with lazy-loaded model singleton (hippo/voice.py)
+- Image handling via Claude vision with base64 encoding (query_agent_with_image)
+- Other media rejection handler for unsupported types
+- /help, /status, /tasks, /memory N commands — all bypass the agent, read from stores directly
+- Store plumbing: create_memory_server returns 5-tuple, create_agent returns 6-tuple
+- Config: hippo_whisper_model added to HippoConfig
+
+### What was built differently
+- Nothing: plan reflects actual implementation.
+
+### What was added beyond the plan
+- hippo_whisper_language config field: optional language hint for Whisper (None = auto-detect).
+- Follow-up commits: ruff format + mypy cleanup (989a4c2), roadmap status update (ccdf6ef).
+
+### What was not built
+- Nothing: all tasks complete.

@@ -57,3 +57,28 @@ Mark Phase 6 as Done.
 4. Manual: create entity, verify `semantic/embeddings.json` written
 5. Manual: semantic search finds entity without substring match
 6. Manual: `/dream` report includes "Episodes summarized" line
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Task 2: Dependencies + config (sentence-transformers, 4 new config fields)
+- Task 3: Embedding Manager in hippo/memory/embeddings.py
+- Task 4: search_nodes enhanced with embedding search + substring fallback
+- Task 5: find_similar_entities as dream MCP tool, dream prompt updated
+- Task 6: find_archivable_notes + archive_daily_note on episodic store
+- Task 7: Wired into dream cycle with episodic_store threading
+- Task 8: Embedding rebuild after dream runs
+- Task 9: Roadmap updated
+
+### What was built differently
+- Raw document scanning: recursive rglob instead of flat iterdir.
+
+### What was added beyond the plan
+- hippo/dream/housekeeping.py: vault lifecycle pruning (buffer archives, reports, tasks, raw)
+- hippo_retention_days config (90-day default)
+- test_embeddings.py + test_housekeeping.py
+
+### What was not built
+- Nothing.

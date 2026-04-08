@@ -31,3 +31,31 @@ Complete the dream cycle's capabilities so it becomes a fully autonomous memory-
 - conventions — no new deps; vault-first principle for all generated files
 - error-handling — git/subprocess errors caught and logged, not raised; raw file errors tolerated
 - tech-stack — filesystem storage, Claude Agent SDK sub-agent pattern, uv tooling
+
+## Implementation Base
+
+base_commit: 44e9e560b08f92e83790df3fecb1858390eb8190
+captured_at: 2026-04-08T00:00:00Z
+captured_by: finish-spec (legacy fallback)
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Dream report append: multiple same-day runs produce timestamped sections with separators
+- Scheduler → buffer pipeline: task results appended to buffer with session="scheduler-{id}"
+- Raw document ingest: _scan_raw_documents(), _format_raw_documents(), _move_raw_to_processed()
+- Dream skills: skill-creator format with YAML frontmatter, evals.json, 3-occurrence threshold
+- Semantic index: prompt updated to prefer semantic/index.md over read_graph
+- Self-evolving personality: _load_personality_ext() in agent.py, dream prompt updated
+
+### What was built differently
+- Skill-creator bundled as hippo/assets/skill-creator/ and copied to vault on startup via setup.py, rather than downloaded from GitHub at runtime (more reliable, works offline).
+
+### What was added beyond the plan
+- hippo/setup.py: vault setup module that creates dirs (raw/, personality/) and installs bundled skills on first run.
+- Git autocommit explicitly dropped from roadmap (vault is runtime data, not code).
+
+### What was not built
+- Git autocommit: intentionally dropped per shaping decision (vault is runtime data).

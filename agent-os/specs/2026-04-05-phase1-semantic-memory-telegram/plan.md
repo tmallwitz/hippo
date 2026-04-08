@@ -70,3 +70,24 @@ Files: `tests/test_config.py`, `README.md` (update), `.env.example` (update)
 3. `uv run mypy hippo/` — clean
 4. `uv run hippo` — bot starts, manual acceptance via Telegram
 5. Tag `v0.1-phase1`
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- P1a: Project setup — all files created as listed
+- P1b: Semantic memory — all 9 MCP tools, ObsidianSemanticStore, full test suites
+- P1c: Telegram bridge — agent wiring, system prompt, whitelist filter
+- P1d: Tests + polish — config tests, README, .env.example
+
+### What was built differently
+- Nothing: plan reflects actual implementation.
+
+### What was added beyond the plan
+- PLAN.md historical design document
+- agent-os/product/roadmap.md status update
+- uv.lock (generated artifact)
+
+### What was not built
+- Nothing: all tasks complete.

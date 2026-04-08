@@ -19,3 +19,24 @@ See the full plan at the Claude Code plan file. This is a summary.
 4. Daily notes have correct YAML frontmatter and H2 structure
 5. Multiple episodes per day properly separated
 6. Tags are searchable
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Episode model in types.py (Deliverable 1)
+- EpisodicStore protocol in store.py (Deliverable 2)
+- ObsidianEpisodicStore in episodic.py (Deliverable 3)
+- log_episode + recall_episodes MCP tools in server.py (Deliverable 4)
+- System prompt extended in agent.py (Deliverable 5)
+- Tests in test_episodic.py (Deliverable 6)
+
+### What was built differently
+- Nothing.
+
+### What was added beyond the plan
+- Nothing notable.
+
+### What was not built
+- Nothing.

@@ -1,19 +1,30 @@
----
-name: discover-standards
-description: Extract tribal knowledge from a codebase into concise, documented standards. Analyzes a focus area, identifies unusual or opinionated patterns, captures the reasoning behind them, and writes scannable standard files into agent-os/standards/ with an updated index.
-effort: high
----
 # Discover Standards
 
 Extract tribal knowledge from your codebase into concise, documented standards.
 
 ## Important Guidelines
 
-- **Always use AskUserQuestion tool** when asking the user anything
+- **Always use AskUserQuestion tool** when asking the user anything (interactive mode only)
 - **Write concise standards** — Use minimal words. Standards must be scannable by AI agents without bloating context windows.
 - **Offer suggestions** — Present options the user can confirm, choose between, or correct. Don't make them think harder than necessary.
 
+## Modes
+
+This command runs in two modes:
+
+- **Interactive (default)** — `/discover-standards [area]`
+  Analyze the codebase, then ask the user to confirm, name, and scope each discovered pattern via `AskUserQuestion`. Use this when you have context on the code and want high-quality, well-named standards.
+
+- **Auto** — `/discover-standards --auto [area]`
+  Analyze the codebase and generate standards non-interactively. Each generated standard is marked with `auto_generated: true` and `needs_review: true` in its frontmatter. Use this after vibe-coding sessions, for initial greenfield extractions, or when you want a first pass without interruption. Review the results later with a normal `/discover-standards` run, or let `/finish-spec` promote individual decisions into reviewed standards.
+
 ## Process
+
+### Step 0: Mode Detection
+
+1. Check whether the command was invoked with `--auto`.
+2. If `--auto` is present, set `AUTO_MODE = true` and skip all `AskUserQuestion` calls throughout this command. Substitute the defaults described in each step.
+3. If not, set `AUTO_MODE = false` and run the command interactively as described.
 
 ### Step 1: Determine Focus Area
 
@@ -26,7 +37,8 @@ If no area was specified:
    - **Frontend areas:** UI components, styling/CSS, state management, forms, routing
    - **Backend areas:** API routes, database/models, authentication, background jobs
    - **Cross-cutting:** Error handling, validation, testing, naming conventions, file structure
-3. Use AskUserQuestion to present the areas:
+
+**Interactive mode:** use AskUserQuestion to present the areas:
 
 ```
 I've identified these areas in your codebase:
@@ -41,6 +53,8 @@ Which area should we focus on for discovering standards? (Pick one, or suggest a
 
 Wait for user response before proceeding.
 
+**Auto mode:** do not ask. Process **all** identified areas sequentially, one after the other. Exclude `node_modules`, `.git`, `dist`, `build`, `.next`, `venv`, `.venv`, `__pycache__`, `target`, `vendor`, `agent-os`, and any folder listed in `.gitignore`.
+
 ### Step 2: Analyze the Area
 
 Once an area is determined:
@@ -52,7 +66,7 @@ Once an area is determined:
    - **Tribal** — Things a new developer wouldn't know without being told
    - **Consistent** — Patterns repeated across multiple files
 
-3. Use AskUserQuestion to present findings:
+**Interactive mode:** use AskUserQuestion to present findings:
 
 ```
 I analyzed [area] and found these potential standards worth documenting:
@@ -70,9 +84,16 @@ Options:
 - "Skip this area"
 ```
 
+**Auto mode:** apply a worth-documenting threshold. Only document a pattern if:
+
+- It appears in **at least 3 distinct files**, OR
+- It is a clearly-intentional architectural choice (a dependency injection container, a custom base class used throughout, a consistent error envelope, a shared middleware stack, etc.)
+
+Skip one-off occurrences. Skip patterns that are pure framework defaults (e.g. "uses FastAPI decorators" is not a standard worth documenting; "uses FastAPI dependencies for tenant scoping on every route" is).
+
 ### Step 3: Deep Dive on Each Standard
 
-For each standard the user wants to document, ask 1-2 targeted questions to understand the reasoning. Use AskUserQuestion for each.
+**Interactive mode:** For each standard the user wants to document, ask 1-2 targeted questions to understand the reasoning. Use AskUserQuestion for each.
 
 Example questions (adapt based on the specific standard):
 
@@ -82,55 +103,103 @@ Example questions (adapt based on the specific standard):
 
 Keep this brief. The goal is capturing the "why" behind the pattern, not exhaustive documentation.
 
+**Auto mode:** skip this step entirely. The "why" will be inferred from code context and left for review. Do not invent reasons you cannot support from the code.
+
 ### Step 4: Write the Standards
 
 For each standard:
 
-1. Determine the appropriate folder (create if needed):
-   - `api/`, `database/`, `frontend/`, `backend/`, `testing/`, `global/`
+1. Determine the appropriate folder (create if needed).
 
-2. Check if a related standard file already exists — append to it if so
+   **Interactive mode:** ask the user which subfolder of `agent-os/standards/` to place it in.
 
-3. Draft the content and use AskUserQuestion to confirm:
+   **Auto mode:** infer from the file paths where the pattern was observed. Use these inference rules in order:
+   - If the pattern lives in files under `api/`, `routes/`, `controllers/`, or `handlers/` → `api/`
+   - If under `db/`, `database/`, `models/`, `migrations/`, or matches SQL files → `database/`
+   - If under `components/`, `pages/`, `src/app/`, or matches `.tsx`/`.jsx` → `frontend/`
+   - If under `tests/`, `spec/`, or matches `*_test.*`, `*.test.*`, `*.spec.*` → `testing/`
+   - If the pattern is cross-cutting (naming, formatting, error handling across layers) → `global/`
+   - Otherwise → root level of `agent-os/standards/`
 
-```
-Here's the draft for api/response-format.md:
+2. Determine the file name.
 
----
-# API Response Format
+   **Interactive mode:** ask the user to confirm or rename.
 
-All API responses use this envelope:
+   **Auto mode:** generate a name from the pattern's most distinctive trait. Use kebab-case. Examples: `fastapi-dependency-injection`, `sql-server-temporal-tables`, `react-query-error-handling`. If a name collides with an existing standard, append `-v2`, `-v3`, etc.
 
-\`\`\`json
-{ "success": true, "data": { ... } }
-{ "success": false, "error": { "code": "...", "message": "..." } }
-\`\`\`
+3. Check if a related standard file already exists — append to it if so (interactive mode only; in auto mode, never append to existing files, always create a new one with a suffix to avoid silently polluting reviewed standards).
 
-- Never return raw data without the envelope
-- Error responses must include both code and message
-- Success responses omit the error field entirely
----
+4. Draft the content.
 
-Create this file? (yes / edit: [your changes] / skip)
-```
+   **Interactive mode:** use AskUserQuestion to confirm:
 
-4. Create or update the file in `agent-os/standards/[folder]/`
+   ```
+   Here's the draft for api/response-format.md:
+
+   ---
+   # API Response Format
+
+   All API responses use this envelope:
+
+   \`\`\`json
+   { "success": true, "data": { ... } }
+   { "success": false, "error": { "code": "...", "message": "..." } }
+   \`\`\`
+
+   - Never return raw data without the envelope
+   - Error responses must include both code and message
+   - Success responses omit the error field entirely
+   ---
+
+   Create this file? (yes / edit: [your changes] / skip)
+   ```
+
+   **Auto mode:** write the file directly. Generate a one-line description that starts with a verb (e.g. "Use X when Y", "Prefer A over B", "All API responses follow ..."), under 120 characters.
+
+5. Create the file in `agent-os/standards/[folder]/`.
+
+   **Interactive mode frontmatter:**
+   ```
+   ---
+   description: <one-line description>
+   ---
+   ```
+
+   **Auto mode frontmatter:**
+   ```
+   ---
+   description: <one-line description>
+   auto_generated: true
+   needs_review: true
+   generated_at: <ISO timestamp>
+   generated_from_files:
+     - <path1>
+     - <path2>
+     - <path3>
+   ---
+   ```
+
+   The `generated_from_files` list should contain up to five representative files where the pattern was observed, so a later reviewer can quickly verify the extraction.
 
 ### Step 5: Update the Index
 
 After all standards are created:
 
 1. Scan `agent-os/standards/` for all `.md` files
-2. For each new file without an index entry, use AskUserQuestion:
+2. For each new file without an index entry:
 
-```
-New standard needs an index entry:
-  File: api/response-format.md
+   **Interactive mode:** use AskUserQuestion:
 
-Suggested description: "API response envelope structure and error format"
+   ```
+   New standard needs an index entry:
+     File: api/response-format.md
 
-Accept this description? (yes / or type a better one)
-```
+   Suggested description: "API response envelope structure and error format"
+
+   Accept this description? (yes / or type a better one)
+   ```
+
+   **Auto mode:** use the description from the file's frontmatter as-is.
 
 3. Update `agent-os/standards/index.yml`:
 
@@ -142,9 +211,9 @@ api:
 
 Alphabetize by folder, then by filename.
 
-### Step 6: Offer to Continue
+### Step 6: Report Results
 
-Use AskUserQuestion:
+**Interactive mode:** use AskUserQuestion:
 
 ```
 Standards created for [area]:
@@ -152,6 +221,27 @@ Standards created for [area]:
 - api/error-codes.md
 
 Would you like to discover standards in another area, or are we done?
+```
+
+**Auto mode:** print a summary (no question):
+
+```
+✓ Auto-discovery complete.
+
+Created <N> standards across <M> areas:
+  - api/<file>.md (needs review)
+  - database/<file>.md (needs review)
+  - frontend/<file>.md (needs review)
+  ...
+
+All <N> standards are marked needs_review: true.
+
+Review them by running /discover-standards (without --auto) when you have time,
+or let /finish-spec promote individual decisions into reviewed standards as
+you close out each spec.
+
+Run /index-standards if the index needs any cleanup (auto mode already added
+basic entries).
 ```
 
 ## Output Location

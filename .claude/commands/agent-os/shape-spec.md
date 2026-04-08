@@ -1,8 +1,3 @@
----
-name: shape-spec
-description: Gather context and structure planning for significant work. Run in plan mode to shape scope, gather visuals, identify references, check product context, surface standards, and produce a spec folder with plan.md, shape.md, standards.md, and references.md.
-effort: high
----
 # Shape Spec
 
 Gather context and structure planning for significant work. **Run this command while in plan mode.**
@@ -24,8 +19,23 @@ If NOT in plan mode, **stop immediately** and tell the user:
 ```
 Shape-spec must be run in plan mode. Please enter plan mode first, then run /shape-spec again.
 ```
-
 Do not proceed with any steps below until confirmed to be in plan mode.
+
+## Precondition: Git clean state
+
+This command assumes the repository is committed and clean before shaping begins. This is required so that `/finish-spec` can later compute a reliable diff between the spec's starting point and the final implementation.
+
+1. Check that the current working directory is inside a git repository. If not, tell the user that Agent OS expects a git-tracked project and stop.
+
+2. Run `git status --porcelain`. If the output is empty, the working tree is clean — continue.
+
+3. If the working tree is dirty, use `AskUserQuestion` to ask the user how to proceed. Offer exactly these options:
+
+    - **Commit now** — Show the user the output of `git status --short`, propose a commit message derived from the current changes (e.g. `"chore: pre-shape checkpoint before <proposed spec slug>"`), and let them edit it via `AskUserQuestion`. Then run `git add -A && git commit -m "<message>"`. Confirm the resulting commit SHA.
+    - **Stash now** — Run `git stash push -u -m "pre-shape stash for <proposed spec slug>"`. Warn the user that the stash must be restored manually later and that `/finish-spec` will not see those changes as part of this spec.
+    - **Continue anyway** — Proceed without cleaning. Warn the user explicitly that `/finish-spec` will not be able to compute a clean diff for this spec and that the base commit recorded below will be the last commit before any uncommitted changes.
+
+4. After this step completes (or was skipped), record the base commit. Run `git rev-parse HEAD` and store the result as `BASE_SHA`. This SHA will be written into `shape.md` in the step that creates the spec folder.
 
 ## Process
 
@@ -77,22 +87,38 @@ Examples:
 
 If references are provided, read and analyze them to inform the plan.
 
-### Step 4: Check Product Context
+### Step 4: Check Product Context and Active Milestone
 
 Check if `agent-os/product/` exists and contains files.
 
-If it exists, read key files (like `mission.md`, `roadmap.md`, `tech-stack.md`) and use AskUserQuestion:
+If it exists, read the key files:
+- `mission.md`
+- `tech-stack.md`
+- `milestones/index.yml` (if present)
+
+If `milestones/index.yml` exists, find the milestone with `status: active`. If there is exactly one active milestone, read its `goals.md` and `scope.md` and remember the milestone slug as `ACTIVE_MILESTONE`. If there are multiple active milestones, use AskUserQuestion to ask which one this spec belongs to. If there are none, set `ACTIVE_MILESTONE = null`.
+
+Use AskUserQuestion:
 
 ```
 I found product context in agent-os/product/. Should this feature align with any specific product goals or constraints?
 
 Key points from your product docs:
-- [summarize relevant points]
+- Mission: [summarize relevant points]
+[If ACTIVE_MILESTONE is set:]
+- Active milestone: {ACTIVE_MILESTONE}
+  Goal: [summarize from goals.md]
+  In scope: [summarize from scope.md]
+  Out of scope: [summarize from scope.md]
 
-(Confirm alignment or note any adjustments)
+(Confirm alignment, or note any adjustments. If this feature is out of scope
+for the active milestone, say so now — we can still build it, but the spec
+will be flagged.)
 ```
 
-If no product folder exists, skip this step.
+If the user confirms this spec is out of scope for the active milestone, remember this as `OUT_OF_SCOPE = true` and include a warning in `shape.md` later.
+
+If no product folder exists, skip this step and set `ACTIVE_MILESTONE = null`, `OUT_OF_SCOPE = false`.
 
 ### Step 5: Surface Relevant Standards
 
@@ -140,6 +166,10 @@ Here's the plan structure. Task 1 saves all our shaping work before implementati
 
 ## Task 1: Save Spec Documentation
 
+Base commit recorded: <BASE_SHA>
+[If ACTIVE_MILESTONE: "Milestone: {ACTIVE_MILESTONE}"]
+[If OUT_OF_SCOPE: "⚠ Out of scope for active milestone"]
+
 Create `agent-os/specs/{folder-name}/` with:
 
 - **plan.md** — This full plan
@@ -170,7 +200,43 @@ After Task 1 is confirmed, continue building out the remaining implementation ta
 
 Each task should be specific and actionable.
 
-### Step 9: Ready for Execution
+### Step 9: Offer Standards Promotion from Shaping Decisions
+
+Before finalizing the plan, review the architectural decisions that emerged during this shaping session. Often `/shape-spec` surfaces choices that would make good standards (e.g. "we decided all new endpoints use cursor pagination", "we decided to put background jobs in `src/jobs/` not `src/tasks/`").
+
+1. List the shaping decisions you made during this session (from Steps 1-5). Keep it short — the top 1 to 3 decisions that feel like reusable rules, not one-offs.
+
+2. For each candidate, use AskUserQuestion:
+
+```
+During shaping, we decided: "<decision>"
+
+This looks like it could be a reusable rule for future work. Do you want to
+promote it to a standard?
+
+1. Yes, create a new standard now
+2. No, this is spec-specific
+3. Skip all remaining candidates
+
+(Choose 1, 2, or 3)
+```
+
+3. If the user says "skip all remaining", stop offering for this session.
+
+4. If the user says "yes", ask which domain folder (list existing subfolders of `agent-os/standards/` plus an "other" option) and draft a concise standard. Follow the concise-standards rules. Add frontmatter:
+
+```
+---
+description: <one-line description>
+auto_promoted_from: <spec folder name>
+---
+```
+
+5. If any new standards were created, remind the user to run `/index-standards` before the next `/inject-standards` call, and include a note in `shape.md` listing which standards were promoted from this spec.
+
+This step is deliberately placed **before** the plan is finalized, so that if a new standard is created, it can be included in `standards.md` for this very spec and immediately guide the implementation.
+
+### Step 10: Ready for Execution
 
 When the full plan is ready:
 
@@ -207,6 +273,12 @@ The shape.md file should capture:
 
 [What we're building, from Step 1]
 
+## Milestone
+
+[If ACTIVE_MILESTONE is set: the milestone slug and its goal.
+ If OUT_OF_SCOPE: add "⚠ This spec is out of scope for the active milestone."
+ If no milestone: "No active milestone."]
+
 ## Decisions
 
 - [Key decisions made during shaping]
@@ -222,6 +294,16 @@ The shape.md file should capture:
 
 - api/response-format — [why it applies]
 - api/error-handling — [why it applies]
+
+## Standards Promoted from this Spec
+
+[List any standards created during Step 9, or "None" if the user skipped promotion.]
+
+## Implementation Base
+
+base_commit: <BASE_SHA>
+captured_at: <ISO timestamp of when /shape-spec ran>
+captured_by: shape-spec
 ```
 
 ## standards.md Content
@@ -270,3 +352,4 @@ The following standards apply to this work.
 - **Visuals are optional** — Not every feature needs mockups.
 - **Standards guide, not dictate** — They inform the plan but aren't always mandatory.
 - **Specs are discoverable** — Months later, someone can find this spec and understand what was built and why.
+- **Milestone awareness is opt-in** — If you haven't set up milestones via `/plan-product`, shape-spec still works exactly as before.

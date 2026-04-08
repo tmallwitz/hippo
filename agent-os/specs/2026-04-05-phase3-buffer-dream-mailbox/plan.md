@@ -76,3 +76,28 @@ via filesystem mailboxes.
 | Bot registry | Convention: `bots.yaml` in project root (no config) |
 | Cleanup responsibility | Runner (not agent) archives buffer + clears inbox |
 | Empty buffer handling | Skip LLM, write minimal report, still archive |
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Task 2: BufferEntry, MailboxMessage, DreamReport models in types.py
+- Task 3: ObsidianBufferStore in buffer.py + test_buffer.py
+- Task 4: ObsidianMailboxStore in mailbox.py + test_mailbox.py
+- Task 5: MCP tools (remember, send_message, read_inbox) + create_dream_server()
+- Task 6: hippo/dream/ package (runner.py, prompts.py) + test_dream.py
+- Task 7: Config wiring (hippo_dream_model), agent system prompt, .env.example
+- Task 8: /dream command in telegram_bridge.py, __main__.py updated
+- Task 9: conftest.py fixtures updated
+- Task 10: README.md, roadmap.md updated
+- Task 11: Lint/format pass (ruff format fix in separate commit)
+
+### What was built differently
+- Buffer uses Markdown format (H2 sections) instead of JSONL: consistent with vault-readable philosophy.
+
+### What was added beyond the plan
+- Scheduler auto-dream: scheduler.py triggers dream when buffer exceeds max entries.
+
+### What was not built
+- Nothing.
