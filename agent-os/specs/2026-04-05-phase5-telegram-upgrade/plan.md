@@ -51,3 +51,25 @@ Handler for document/sticker/animation/video/audio/etc → polite "I can't proce
 - Image → Claude describes it + agent responds
 - Document → polite rejection
 - `/dream` still works
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Task 1: openai-whisper dep, hippo_whisper_model config, .env.example, mypy override
+- Task 2: Store plumbing — server.py 5-tuple, agent.py 6-tuple, __main__.py unpacked
+- Task 3: /help, /status, /tasks, /memory commands (direct store reads)
+- Task 4: Other media rejection handler
+- Task 5: hippo/voice.py with lazy-loaded Whisper singleton
+- Task 6: query_agent_with_image() with base64 + vision
+
+### What was built differently
+- Nothing.
+
+### What was added beyond the plan
+- hippo_whisper_language config (optional language hint)
+- Follow-up: ruff format + mypy type-ignore cleanup
+
+### What was not built
+- Nothing.

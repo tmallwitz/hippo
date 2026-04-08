@@ -57,3 +57,31 @@ Three sub-deliverables:
 - `error-handling` — Fail fast with clear messages for bad bot name / missing config
 - `tech-stack` — Updated deployment section to Windows 11 Pro + PowerShell
 - `validation` — Pydantic validation, regex allowlist for bot names
+
+## Implementation Base
+
+base_commit: 629b89d8dc7dde62ddf64684d1ce3574ee584127
+captured_at: 2026-04-08T00:00:00Z
+captured_by: finish-spec (legacy fallback)
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Task 2: HippoConfig extended with pydantic-settings two-layer env resolution (prefixed + unprefixed)
+- Task 3: `argparse` CLI with `bot_name` positional arg, bot name regex validation, `TimedRotatingFileHandler`
+- Task 4: `project_root` fix in `server.py` so `send_message` resolves `bots.yaml` from repo root
+- Task 5: `.env.example` restructured with shared `HIPPO_*` section and per-bot `ALICE_*` section
+- Task 6: `scripts/start-bots.ps1`, `scripts/install-tasks.ps1`, `scripts/deploy.ps1` all created
+- Task 7: `tests/test_config.py` extended, `tests/test_main.py` created
+- Task 8: `README.md`, `tech-stack.md`, `roadmap.md` updated
+
+### What was built differently
+- Nothing: spec was written retrospectively after implementation; plan reflects what was actually built.
+
+### What was added beyond the plan
+- Nothing notable beyond what the plan describes.
+
+### What was not built
+- Nothing: all tasks are complete.

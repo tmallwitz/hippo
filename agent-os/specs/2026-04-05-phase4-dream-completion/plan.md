@@ -85,3 +85,24 @@ Update DREAM SUMMARY block to add `Skills updated:` line.
 2. `uv run ruff check hippo/ tests/` + `uv run ruff format --check hippo/ tests/`
 3. Manual: drop `.md` in `raw/`, trigger `/dream`, verify file moved to `raw/processed/`
 4. Manual: send messages, trigger `/dream`, verify `semantic/index.md` + `personality/prompt_ext.md` in vault
+
+## Deviations & Bugfixes
+
+2026-04-08
+
+### What was built as planned
+- Task 2: Dream report append with timestamped sections and separators
+- Task 3: Scheduler → buffer pipeline (buffer_store threaded through _execute_task)
+- Task 4: Raw document ingest (scan, format, move helpers in runner.py)
+- Task 5b: Dream prompt updated with skill-creator instructions, 3-occurrence threshold
+- Task 6: Semantic index prompt + personality polish prompt refinements
+
+### What was built differently
+- Task 5a: Skill-creator bundled as hippo/assets/skill-creator/ instead of downloaded from GitHub. New hippo/setup.py copies it to vault on startup.
+
+### What was added beyond the plan
+- hippo/setup.py: vault setup module (dirs + bundled skills install)
+- Git autocommit explicitly dropped from roadmap scope
+
+### What was not built
+- Git autocommit: intentionally dropped (vault = runtime data, not source code).

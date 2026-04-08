@@ -1,0 +1,22 @@
+milestones:
+  m1-foundation:
+    status: closed
+    created_at: 2026-04-08T00:00:00Z
+    closed_at: 2026-04-08T00:00:00Z
+    goal: >-
+      Build the full Hippo foundation: semantic memory, episodic memory,
+      scheduler, dream cycle, Telegram bridge, embedding search, and
+      multi-bot runtime across Phases 1–7.
+    specs_delivered: 8
+    carry_over:
+      - Concurrent dream prevention needs real-world testing under load
+      - Skill quality validation — CI test that created skills follow the format
+      - Personality convergence testing — does prompt_ext.md stabilize or drift?
+      - Replace growing store tuples with a Stores dataclass
+      - Video message support
+      - Whisper model auto-download on first run
+      - Incremental embedding optimization for >10k entities
+      - Housekeeping dry-run mode for debugging retention policies
+      - Embedding model upgrade path — re-embed when switching models
+      - Linux/systemd deployment path
+      - Health-check endpoint per bot

@@ -1,15 +1,67 @@
-# Agent OS Standards Index
-
 global:
+  agent-query-execution:
+    description: Background tasks execute by prompting the agent, giving them full memory tool access
+  auth-claude-login:
+    description: Authenticate with Claude via claude login on the server, not via API keys in .env
+  bundled-assets:
+    description: Ship reusable assets in hippo/assets/ and copy to vault on startup if not installed
   coding-style:
-    description: Python naming, formatting, type hints, and DRY principles
+    description: Consistent naming, automated formatting, type hints, small focused functions
+  commands-bypass-agent:
+    description: Status and info Telegram commands read directly from stores without querying the LLM
   commenting:
-    description: Docstring style, minimal comments, self-documenting code rules
+    description: Self-documenting code, minimal evergreen comments, Google-style docstrings
+  convention-file-registry:
+    description: Convention files (bots.yaml) in project root for registries; return empty dict if missing
   conventions:
-    description: Project structure, dependency management, git workflow, and UV/uv.lock
+    description: Project structure, uv tooling, Conventional Commits, feature branches, flat layout
+  dash-tolerant-parsing:
+    description: Markdown parsers handle em-dash, en-dash, and plain hyphen interchangeably
+  embedding-failures-never-block:
+    description: Embedding operations degrade gracefully to substring fallback; never block core memory
+  ephemeral-sub-agent:
+    description: Sub-agents create a fresh ClaudeSDKClient per run and dispose after; never reuse main client
   error-handling:
-    description: Exception types, FastAPI HTTPException, structured logging with Structlog
+    description: Fail fast, specific exceptions, structured logging, user-friendly messages
+  everything-in-vault:
+    description: All bot-generated files live under HIPPO_VAULT_PATH; agents use cwd=vault_path
+  lazy-loaded-singletons:
+    description: Heavy resources (ML models) loaded on first use, not at startup, module-level singleton
+  markdown-over-binary:
+    description: All vault data uses Markdown for Obsidian readability, even over more efficient formats
+  minimal-tool-surface:
+    description: Memory tools expose only create+read; editing and deleting happens in Obsidian
+  multi-tenant-config:
+    description: Per-instance config from prefixed env vars with shared unprefixed fallback via pydantic-settings
+  no-media-storage:
+    description: Non-text media is described/transcribed but never saved as binary files in the vault
+  one-file-per-record:
+    description: Records with individual lifecycles stored as one Markdown file each, not in shared files
+  process-isolation:
+    description: OS-level process isolation over in-process threading for independent agent instances
+  public-bridge-api:
+    description: telegram_bridge exposes query_agent and convert_to_telegram for reuse by scheduler and dream
+  python-scans-agent-classifies:
+    description: Orchestrator reads files and passes content to LLM; agent classifies, not scans
+  runner-owns-cleanup:
+    description: Orchestrator owns side-effect cleanup (buffer archival, inbox clearing) in finally blocks
+  semantic-store-protocol:
+    description: All memory backends implement the SemanticStore Protocol for backend-agnostic tools
+  shared-client-lock:
+    description: Single asyncio.Lock prevents concurrent agent queries from Telegram, scheduler, and dream
   tech-stack:
-    description: Full Hippo stack — Claude Agent SDK, aiogram, filesystem storage, uv tooling
+    description: Claude Agent SDK, aiogram v3, pydantic-settings, sentence-transformers, Windows 11 Pro deployment
+  two-threshold-search:
+    description: Permissive threshold (0.4) for search, conservative (0.7) for entity deduplication
   validation:
-    description: Pydantic/FastAPI input validation, fail-early and allowlist patterns
+    description: Pydantic models for config, validate at boundaries, fail early with clear messages
+  vault-housekeeping:
+    description: Configurable retention-based pruning for time-stamped vault files, run in dream cycle
+  vault-is-runtime-data:
+    description: Vault is runtime data, not source code; never git-track or autocommit it
+  vault-storage-layout:
+    description: Category subfolders (semantic/EntityType/, episodic/, etc.) for Obsidian navigability
+  verbose-log-deferred-prune:
+    description: Log verbosely at write time; pruning deferred to dream cycle
+  warn-dont-block-refs:
+    description: Unresolved references log a warning but do not raise; prefer loose coupling
